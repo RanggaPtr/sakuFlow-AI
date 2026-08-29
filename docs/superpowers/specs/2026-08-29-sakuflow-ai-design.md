@@ -326,6 +326,7 @@ Define an `AiProvider` interface so the domain is not tied to Gemini:
 
 ```ts
 interface AiProvider {
+  parseOnboarding(input: ParseOnboardingInput): Promise<ParsedOnboarding>;
   parseCommand(input: ParseCommandInput): Promise<ParsedCommand>;
   explainInsight(input: InsightExplanationInput): Promise<InsightExplanation>;
 }
@@ -343,6 +344,7 @@ The initial adapter uses Gemini with a server-only API key.
 
 ### Route handlers
 
+- `POST /api/ai/parse-onboarding`
 - `POST /api/ai/parse-command`
 - `POST /api/ai/explain-insight`
 
@@ -413,6 +415,7 @@ src/
 │   │   ├── plan/page.tsx
 │   │   └── insights/page.tsx
 │   └── api/ai/
+│       ├── parse-onboarding/route.ts
 │       ├── parse-command/route.ts
 │       └── explain-insight/route.ts
 ├── features/finance/
