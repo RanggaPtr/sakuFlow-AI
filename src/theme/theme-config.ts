@@ -38,21 +38,19 @@ export const themeConfig: ThemeConfig = {
    * Typography
    *************************************** */
   fontFamily: {
-    // CSS variable dari next/font/local — didefinisikan di src/app/layout.tsx.
-    // Ganti font = ganti file woff2 di src/assets/fonts + definisi localFont.
-    primary: 'var(--font-dm-sans)',
-    secondary: 'var(--font-barlow)',
+    primary: '"Inter", sans-serif',
+    secondary: '"Inter", sans-serif',
   },
   /** **************************************
    * Palette
    *************************************** */
   palette: {
     primary: {
-      lighter: '#CDF1F6',
-      light: '#5BD0DD',
-      main: '#007F96',
-      dark: '#005B66',
-      darker: '#003A42',
+      lighter: '#D0D6F9',
+      light: '#8B9DF0',
+      main: '#435EE3', // SakuFlow Indigo
+      dark: '#2A3C98',
+      darker: '#151E4C',
       contrastText: '#FFFFFF',
     },
     secondary: {
