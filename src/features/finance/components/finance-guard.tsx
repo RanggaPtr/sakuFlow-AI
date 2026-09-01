@@ -18,7 +18,7 @@ export function FinanceGuard({ children }: { children: React.ReactNode }) {
     if (state.hydration === 'ready' && !selectIsOnboarded(state)) {
       router.replace('/onboarding');
     }
-  }, [state.hydration, state.snapshot, router]);
+  }, [state, router]);
 
   if (!isClient || state.hydration === 'idle') {
     return null; // Or a nice splash screen loading state

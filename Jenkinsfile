@@ -56,9 +56,21 @@ pipeline {
       }
     }
 
-    stage('Build') {
+    stage('Clean Build') {
       steps {
-        sh 'yarn build'
+        sh 'yarn clean && yarn build'
+      }
+    }
+
+    stage('Secret Scan') {
+      steps {
+        sh 'docker run --rm -v "${WORKSPACE}:/path" zricethezav/gitleaks:latest detect --source="/path" -v'
+      }
+    }
+
+    stage('Docker Build') {
+      steps {
+        sh 'docker compose build --no-cache'
       }
     }
   }
