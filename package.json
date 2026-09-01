@@ -5,6 +5,8 @@
   "description": "Venturo company-profile skeleton — Next.js 16 + MUI 9 (Zone UI v4.6.0 base)",
   "private": true,
   "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run",
     "dev": "next dev -p 8002",
     "start": "next start -p 8002",
     "build": "next build",
@@ -69,10 +71,15 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@svgr/webpack": "^8.1.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.6",
     "@types/node": "^25.6.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/parser": "^8.49.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "eslint": "^9.39.2",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
@@ -82,9 +89,11 @@
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
+    "jsdom": "^30.0.1",
     "lint-staged": "^17.0.8",
     "prettier": "^3.8.3",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.49.0"
+    "typescript-eslint": "^8.49.0",
+    "vitest": "^4.1.11"
   }
 }

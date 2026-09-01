@@ -32,6 +32,12 @@ pipeline {
       }
     }
 
+    stage('Test') {
+      steps {
+        sh 'yarn test:run'
+      }
+    }
+
     stage('Lint') {
       steps {
         sh 'yarn lint'
