@@ -1,8 +1,11 @@
+import Box from '@mui/material/Box';
+
+import { SettingsPanel } from 'src/features/finance/components';
+
 export default function SettingsPage() {
   return (
-    <div style={{ padding: '24px' }}>
-      <h1>Settings</h1>
-      <p>SakuFlow configuration.</p>
-    </div>
+    <Box sx={{ p: 3, maxWidth: 600, mx: 'auto' }}>
+      <SettingsPanel />
+    </Box>
   );
 }
