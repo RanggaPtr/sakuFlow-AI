@@ -40,33 +40,19 @@ describe('interpretTransactionText', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses fallback if API key is missing', async () => {
-    const result = await interpretTransactionText('makan 50k');
-    expect(result).toMatchObject({
-      type: 'expense',
-      amount: 50000,
-    });
-  });
-
-  it('calls Gemini API and parses JSON response', async () => {
+  it('calls /api/ai/parse and returns parsed JSON', async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () =>
         Promise.resolve({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  { text: '{"type":"expense","amount":50000,"category":"food","note":"makan"}' },
-                ],
-              },
-            },
-          ],
+          type: 'expense',
+          amount: 50000,
+          category: 'food',
         }),
     });
 
-    const result = await interpretTransactionText('makan 50k', 'fake-key');
-    expect(global.fetch).toHaveBeenCalled();
+    const result = await interpretTransactionText('makan 50k');
+    expect(global.fetch).toHaveBeenCalledWith('/api/ai/parse', expect.any(Object));
     expect(result).toMatchObject({
       type: 'expense',
       amount: 50000,
@@ -77,7 +63,7 @@ describe('interpretTransactionText', () => {
   it('falls back if API fails', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
-    const result = await interpretTransactionText('makan 50k', 'fake-key');
+    const result = await interpretTransactionText('makan 50k');
     expect(result).toMatchObject({
       type: 'expense',
       amount: 50000,
