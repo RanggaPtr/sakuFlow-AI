@@ -5,7 +5,11 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { useFinance, selectProjection } from 'src/features/finance/state';
-import { DashboardBudget, DashboardOverview } from 'src/features/finance/components';
+import {
+  DashboardBudget,
+  AiChatInterface,
+  DashboardOverview,
+} from 'src/features/finance/components';
 
 export default function DashboardPage() {
   const { state } = useFinance();
@@ -33,6 +37,8 @@ export default function DashboardPage() {
           safePool={projection.safePool}
           spent={projection.spent}
         />
+
+        <AiChatInterface />
       </Stack>
     </Box>
   );
