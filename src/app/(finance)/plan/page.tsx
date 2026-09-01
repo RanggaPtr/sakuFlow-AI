@@ -1,8 +1,11 @@
+import Box from '@mui/material/Box';
+
+import { TransactionList } from 'src/features/finance/components';
+
 export default function PlanPage() {
   return (
-    <div style={{ padding: '24px' }}>
-      <h1>Plan</h1>
-      <p>SakuFlow budget and goals planning.</p>
-    </div>
+    <Box sx={{ p: 3, maxWidth: 600, mx: 'auto' }}>
+      <TransactionList />
+    </Box>
   );
 }

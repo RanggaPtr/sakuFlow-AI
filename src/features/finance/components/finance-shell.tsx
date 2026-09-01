@@ -35,7 +35,7 @@ export function FinanceShell({ children }: { children: ReactNode }) {
           onChange={handleChange}
         >
           <BottomNavigationAction label="Dashboard" value="/dashboard" />
-          <BottomNavigationAction label="Plan" value="/plan" />
+          <BottomNavigationAction label="Riwayat" value="/plan" />
           <BottomNavigationAction label="Settings" value="/settings" />
         </BottomNavigation>
       </Box>

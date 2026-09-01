@@ -16,6 +16,7 @@ export type FinanceAction =
   | { type: 'hydrate'; result: LoadFinanceResult }
   | { type: 'complete-onboarding'; snapshot: FinanceSnapshot }
   | { type: 'add-transaction'; transaction: Transaction }
+  | { type: 'delete-transaction'; transactionId: string }
   | { type: 'add-obligation'; obligation: Obligation }
   | { type: 'mark-obligation-paid'; obligationId: string; transaction: Transaction }
   | { type: 'add-goal'; goal: SavingsGoal }
@@ -47,6 +48,15 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
         snapshot: {
           ...state.snapshot,
           transactions: [...state.snapshot.transactions, action.transaction],
+        },
+      };
+    }
+    case 'delete-transaction': {
+      return {
+        ...state,
+        snapshot: {
+          ...state.snapshot,
+          transactions: state.snapshot.transactions.filter((t) => t.id !== action.transactionId),
         },
       };
     }
