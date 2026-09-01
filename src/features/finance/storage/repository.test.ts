@@ -34,12 +34,40 @@ describe('FinanceRepository', () => {
 
   it('performs valid round-trip', () => {
     const snapshot = makeFinanceSnapshot();
-    repo.save(snapshot);
+    const saveResult = repo.save(snapshot);
+    expect(saveResult).toEqual({ ok: true });
+
     const result = repo.load();
     expect(result.status).toBe('ready');
     if (result.status === 'ready') {
       expect(result.snapshot.profile?.id).toBe(snapshot.profile?.id);
     }
+  });
+
+  it('handles quota exceeded error on save', () => {
+    const snapshot = makeFinanceSnapshot();
+    storage.setItem = () => {
+      const err = new DOMException('Quota exceeded', 'QuotaExceededError');
+      throw err;
+    };
+    const saveResult = repo.save(snapshot);
+    expect(saveResult).toEqual({ ok: false, code: 'quota' });
+  });
+
+  it('rejects invalid snapshot on save', () => {
+    const invalidSnapshot: any = makeFinanceSnapshot();
+    invalidSnapshot.transactions.push({
+      id: '99999999-9999-4999-8999-999999999999',
+      type: 'expense',
+      amount: -100, // invalid amount
+      category: 'other',
+      createdAt: '2026-08-01T00:00:00Z',
+      note: 'test',
+      occurredOn: '2026-08-01',
+      source: 'manual',
+    });
+    const saveResult = repo.save(invalidSnapshot);
+    expect(saveResult).toEqual({ ok: false, code: 'invalid-data' });
   });
 
   it('handles malformed JSON', () => {

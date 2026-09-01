@@ -2,7 +2,7 @@ import type { FinanceState, FinanceAction } from './finance-reducer';
 
 import { it, expect, describe } from 'vitest';
 
-import { EMPTY_FINANCE_SNAPSHOT } from 'src/features/finance/domain';
+import { createEmptyFinanceSnapshot } from 'src/features/finance/domain';
 import { makeFinanceSnapshot } from 'src/features/finance/test/fixtures';
 
 import { financeReducer } from './finance-reducer';
@@ -10,7 +10,7 @@ import { financeReducer } from './finance-reducer';
 describe('financeReducer', () => {
   const getInitialState = (): FinanceState => ({
     hydration: 'idle',
-    snapshot: EMPTY_FINANCE_SNAPSHOT,
+    snapshot: createEmptyFinanceSnapshot(),
     corruptRawValue: null,
   });
 

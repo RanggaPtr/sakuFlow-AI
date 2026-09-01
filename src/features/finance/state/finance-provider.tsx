@@ -4,9 +4,9 @@ import type { ReactNode } from 'react';
 import type { FinanceState, FinanceAction } from './finance-reducer';
 import type { FinanceRepository } from 'src/features/finance/storage/repository';
 
-import { useRef, useEffect, useReducer, createContext } from 'react';
+import { useRef, useState, useEffect, useReducer, createContext } from 'react';
 
-import { EMPTY_FINANCE_SNAPSHOT } from 'src/features/finance/domain';
+import { createEmptyFinanceSnapshot } from 'src/features/finance/domain';
 import { createFinanceRepository } from 'src/features/finance/storage/repository';
 
 import { selectIsOnboarded } from './selectors';
@@ -22,9 +22,10 @@ export const FinanceContext = createContext<FinanceContextValue | null>(null);
 export function FinanceProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(financeReducer, {
     hydration: 'idle',
-    snapshot: EMPTY_FINANCE_SNAPSHOT,
+    snapshot: createEmptyFinanceSnapshot(),
     corruptRawValue: null,
   });
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const repoRef = useRef<FinanceRepository | null>(null);
 
@@ -36,9 +37,62 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (state.hydration === 'ready' && selectIsOnboarded(state)) {
-      repoRef.current?.save(state.snapshot);
+      const res = repoRef.current?.save(state.snapshot);
+      if (res && !res.ok) {
+        if (res.code === 'quota') {
+          setSaveError('Penyimpanan lokal penuh. Mohon ekspor data Anda agar tidak hilang.');
+        } else {
+          setSaveError('Gagal menyimpan perubahan. Data mungkin tidak valid.');
+        }
+      } else {
+        setSaveError(null);
+      }
     }
   }, [state]);
 
-  return <FinanceContext.Provider value={{ state, dispatch }}>{children}</FinanceContext.Provider>;
+  const handleExport = () => {
+    if (!repoRef.current) return;
+    const json = repoRef.current.exportJson(state.snapshot);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sakuflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <FinanceContext.Provider value={{ state, dispatch }}>
+      {saveError && (
+        <div
+          style={{
+            padding: 12,
+            backgroundColor: '#fef2f2',
+            color: '#991b1b',
+            textAlign: 'center',
+            borderBottom: '1px solid #f87171',
+          }}
+        >
+          <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>⚠️ {saveError}</p>
+          <button
+            onClick={handleExport}
+            style={{
+              padding: '4px 12px',
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            Ekspor JSON
+          </button>
+        </div>
+      )}
+      {children}
+    </FinanceContext.Provider>
+  );
 }

@@ -108,13 +108,3 @@ export const persistenceEnvelopeSchema = z.object({
   data: financeSnapshotSchema,
 });
 export type PersistenceEnvelope = z.infer<typeof persistenceEnvelopeSchema>;
-
-export const EMPTY_FINANCE_SNAPSHOT: FinanceSnapshot = {
-  profile: null,
-  cycle: null,
-  transactions: [],
-  obligations: [],
-  goals: [],
-  allocation: { bufferMode: 'fixed', bufferAmount: 0 },
-};
-Object.freeze(EMPTY_FINANCE_SNAPSHOT);

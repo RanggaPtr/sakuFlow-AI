@@ -1,5 +1,5 @@
-import { it, expect, describe, beforeEach } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
+import { it, vi, expect, describe, beforeEach } from 'vitest';
 
 import { CURRENT_SCHEMA_VERSION } from 'src/features/finance/domain';
 import { STORAGE_KEY } from 'src/features/finance/storage/repository';
@@ -95,6 +95,42 @@ describe('FinanceProvider', () => {
     const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY)!);
     expect(saved.data.transactions).toHaveLength(1);
 
+    unmount();
+  });
+
+  it('shows warning when quota exceeded on save', async () => {
+    const snapshot = makeFinanceSnapshot();
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        data: snapshot,
+      })
+    );
+
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    });
+
+    const { unmount } = render(
+      <FinanceProvider>
+        <TestConsumer />
+      </FinanceProvider>
+    );
+
+    expect(await screen.findByTestId('status')).toHaveTextContent('ready');
+
+    act(() => {
+      screen.getByTestId('add-tx').click();
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(screen.getByText(/Penyimpanan lokal penuh/)).toBeInTheDocument();
+    expect(screen.getByText('Ekspor JSON')).toBeInTheDocument();
+
+    setItemSpy.mockRestore();
     unmount();
   });
 });
