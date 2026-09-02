@@ -40,3 +40,9 @@ export function parseIndonesianMoney(input: string): number | null {
 
   return result;
 }
+
+export function parseStrictIntegerMoney(input: string): number | null {
+  if (!/^[1-9]\d*$/.test(input)) return null;
+  const value = Number(input);
+  return Number.isSafeInteger(value) ? value : null;
+}

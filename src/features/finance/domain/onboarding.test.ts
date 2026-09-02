@@ -29,6 +29,7 @@ describe('buildOnboardingSnapshot', () => {
       startsOn: '2026-08-01',
       nextIncomeOn: '2026-08-25',
       openingBalance: 4000000,
+      recurringIncome: 6000000,
       bufferAmount: 500000,
     });
     expect(snapshot.allocation.bufferAmount).toBe(500000);

@@ -13,6 +13,7 @@ export function makeFinanceSnapshot(overrides?: Partial<FinanceSnapshot>): Finan
       startsOn: '2026-08-01',
       nextIncomeOn: '2026-08-11',
       openingBalance: 4000000,
+      recurringIncome: 6000000,
       bufferAmount: 200000,
     },
     transactions: [],

@@ -17,7 +17,7 @@ export function Footer({ sx, ...other }: FooterProps) {
     >
       <Container>
         <Typography variant="body2" sx={{ textAlign: 'center', color: 'common.white' }}>
-          Venturo Pro © 2026 - The Biggest Programmer Resource in Malang, Jawa Timur
+          SakuFlow AI © 2026 - Asisten keuangan pribadi local-first
         </Typography>
       </Container>
     </Box>

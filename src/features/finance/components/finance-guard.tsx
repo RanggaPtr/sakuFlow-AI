@@ -25,7 +25,18 @@ export function FinanceGuard({ children }: { children: React.ReactNode }) {
   }, [state, router]);
 
   if (!isClient || state.hydration === 'idle') {
-    return null; // Or a nice splash screen loading state
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#164e63' }}
+      >
+        <div>
+          <strong>SakuFlow</strong>
+          <div>Memuat SakuFlow…</div>
+        </div>
+      </div>
+    );
   }
 
   if (state.hydration === 'corrupt') {

@@ -2,7 +2,7 @@
 
 # ============================================================================
 # Build & run:  docker compose up -d --build
-# (manual:      docker build -t venturo-web . && docker run --env-file .env.prod -p 80:80 venturo-web)
+# (manual:      docker build -t sakuflow-ai . && docker run --env-file .env.prod -p 80:80 sakuflow-ai)
 #
 # Env dibaca dari .env.prod DUA kali:
 #   1. Saat BUILD — di-copy jadi .env.production supaya NEXT_PUBLIC_* ter-inline

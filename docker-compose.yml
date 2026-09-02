@@ -1,8 +1,8 @@
 services:
   web:
     build: .
-    image: venturo-skeleton-next
-    container_name: venturo-web
+    image: sakuflow-ai
+    container_name: sakuflow-ai
     ports:
       - '80:80'
     # Var server-only runtime (API_URL, REVALIDATE_TOKEN). NEXT_PUBLIC_* di

@@ -1,8 +1,8 @@
 {
-  "name": "@venturo/skeleton-next",
-  "author": "Venturo",
+  "name": "@sakuflow/ai",
+  "author": "SakuFlow",
   "version": "0.1.0",
-  "description": "Venturo company-profile skeleton — Next.js 16 + MUI 9 (Zone UI v4.6.0 base)",
+  "description": "SakuFlow AI — local-first personal finance assistant",
   "private": true,
   "scripts": {
     "test": "vitest",

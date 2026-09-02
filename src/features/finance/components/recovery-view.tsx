@@ -14,6 +14,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 
 import { useFinance } from 'src/features/finance/state';
+import { toLocalYyyyMmDd } from 'src/features/finance/domain';
 import { MAX_IMPORT_BYTES } from 'src/features/finance/storage/repository';
 
 const VisuallyHiddenInput = styled('input')({
@@ -40,7 +41,7 @@ export function RecoveryView() {
     );
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `sakuflow-corrupt-backup-${new Date().toISOString().substring(0, 10)}.json`;
+    anchor.download = `sakuflow-corrupt-backup-${toLocalYyyyMmDd(new Date())}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
   };

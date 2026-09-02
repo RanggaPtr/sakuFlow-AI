@@ -98,6 +98,17 @@ describe('projectBudget', () => {
     expect(result.safePool).toBe(2950000);
   });
 
+  it('exposes recurring income as a forecast without adding it to current liquid balance', () => {
+    const snapshot = makeFinanceSnapshot();
+    snapshot.cycle = { ...snapshot.cycle!, recurringIncome: 6000000 };
+
+    const result = projectBudget(snapshot, '2026-08-01');
+
+    expect(result.recurringIncome).toBe(6000000);
+    expect(result.recordedIncome).toBe(4000000);
+    expect(result.liquidBalance).toBe(4000000);
+  });
+
   it('uses divisor 1 and adds cycle-stale reason after next income date', () => {
     const snapshot = makeFinanceSnapshot();
     const result = projectBudget(snapshot, '2026-08-12');

@@ -10,17 +10,14 @@ export const CONFIG = {
   appName: 'SakuFlow AI',
   appVersion: packageJson.version,
   assetsDir: env.NEXT_PUBLIC_ASSETS_DIR,
-  /** Tampilkan galeri referensi /components di build production (dev selalu tampil). */
+  /** Tampilkan galeri komponen internal di build production bila diaktifkan. */
   showComponents: env.NEXT_PUBLIC_SHOW_COMPONENTS,
-  /** Go backend base URL (marketplace-be). */
+  /** Optional external data API base URL. */
   apiUrl: env.NEXT_PUBLIC_API_URL,
-  /** Tenant slug sent as X-Company-Slug on every public API call. */
+  /** Optional tenant identifier for the external data API. */
   companySlug: env.NEXT_PUBLIC_COMPANY_SLUG,
   /**
-   * Whitelabel client slug (level di atas company — lihat core/auth.md:
-   * JWT membawa client_id + company_id). Dipakai untuk bootstrap translation
-   * overrides (`GET /core/v1/translation-overrides?slug={client_slug}`) dan
-   * endpoint yang me-resolve tenant via X-Client-Slug.
+   * Optional client identifier for external integrations.
    */
   clientSlug: env.NEXT_PUBLIC_CLIENT_SLUG,
   /**
@@ -28,7 +25,7 @@ export const CONFIG = {
    * Sudah ternormalisasi (tanpa trailing slash); production wajib di-set.
    */
   siteUrl: env.NEXT_PUBLIC_SITE_URL,
-  /** Server-only: override URL API internal (k8s) untuk fetch RSC/sitemap. */
+  /** Server-only: override URL API internal untuk server-side fetches. */
   serverApiUrl: env.API_URL,
   /** Server-only OpenAI-compatible endpoint base URL; absent means deterministic local parsing. */
   aiApiUrl: env.AI_API_URL,

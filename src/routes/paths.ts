@@ -16,11 +16,4 @@ export const paths = {
   plan: '/plan',
   insights: '/insights',
   settings: '/settings',
-  home: '/dashboard', // alias for old Venturo routes
-  support: '/support',
-  components: '/components',
-  article: {
-    root: '/article',
-    details: (slug: string) => `/article/${slug}`,
-  },
 };

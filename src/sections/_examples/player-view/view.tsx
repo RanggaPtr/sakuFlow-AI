@@ -5,7 +5,7 @@ import { useBoolean } from 'minimal-shared/hooks';
 import Box from '@mui/material/Box';
 import Fab from '@mui/material/Fab';
 
-import { paths } from 'src/routes/paths';
+import { legacyPaths } from 'src/routes/legacy-paths';
 
 import { _mock } from 'src/_mock';
 
@@ -25,7 +25,7 @@ export function PlayerView() {
     <ComponentLayout
       heroProps={{
         heading: 'Player',
-        links: [{ name: 'Components', href: paths.components }, { name: 'Player' }],
+        links: [{ name: 'Components', href: legacyPaths.components }, { name: 'Player' }],
         moreLinks: ['https://www.npmjs.com/package/react-player'],
       }}
     >

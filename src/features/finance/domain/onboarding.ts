@@ -47,6 +47,7 @@ export function buildOnboardingSnapshot(
       startsOn,
       nextIncomeOn: nextPayday,
       openingBalance: parsed.currentBalance,
+      recurringIncome: parsed.recurringIncome,
       bufferAmount: parsed.fixedBuffer,
     },
     allocation: { bufferMode: 'fixed', bufferAmount: parsed.fixedBuffer },

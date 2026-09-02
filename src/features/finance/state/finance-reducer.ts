@@ -68,7 +68,16 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
       };
     }
     case 'delete-transaction': {
-      if (!state.snapshot.transactions.some((t) => t.id === action.transactionId)) return state;
+      const transaction = state.snapshot.transactions.find((t) => t.id === action.transactionId);
+      if (!transaction) return state;
+      const isPaidObligationPayment = state.snapshot.obligations.some(
+        (obligation) => obligation.paidTransactionId === action.transactionId
+      );
+      const hasGoalContribution =
+        transaction.category === 'savings' &&
+        transaction.type === 'expense' &&
+        state.snapshot.goals.some((goal) => goal.contributedAmount > 0);
+      if (isPaidObligationPayment || hasGoalContribution) return state;
       return {
         ...state,
         snapshot: {

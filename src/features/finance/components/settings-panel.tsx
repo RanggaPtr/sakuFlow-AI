@@ -17,6 +17,7 @@ import Typography from '@mui/material/Typography';
 import { paths } from 'src/routes/paths';
 
 import { useFinance } from 'src/features/finance/state';
+import { toLocalYyyyMmDd } from 'src/features/finance/domain';
 import { MAX_IMPORT_BYTES } from 'src/features/finance/storage/repository';
 
 const VisuallyHiddenInput = styled('input')({
@@ -48,10 +49,7 @@ export function SettingsPanel() {
   const [message, setMessage] = useState('');
 
   const handleDownload = () => {
-    downloadJson(
-      persistence.exportJson(),
-      `sakuflow-backup-${new Date().toISOString().substring(0, 10)}.json`
-    );
+    downloadJson(persistence.exportJson(), `sakuflow-backup-${toLocalYyyyMmDd(new Date())}.json`);
   };
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {

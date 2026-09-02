@@ -9,11 +9,13 @@ import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 
 import { useFinance } from 'src/features/finance/state';
+import { toLocalYyyyMmDd, parseStrictIntegerMoney } from 'src/features/finance/domain';
 
 interface Props {
   open: boolean;
@@ -29,17 +31,21 @@ export function TransactionDialog({ open, onClose }: Props) {
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [error, setError] = useState('');
 
   const handleSave = () => {
-    const val = parseInt(amount.replace(/\D/g, ''), 10) || 0;
-    if (val <= 0 || !note.trim()) return;
+    const val = parseStrictIntegerMoney(amount);
+    if (val === null || !note.trim()) {
+      setError('Masukkan nominal Rupiah bulat dan catatan.');
+      return;
+    }
 
     const tx: Transaction = {
       id: crypto.randomUUID(),
       type,
       category: 'other',
       amount: val,
-      occurredOn: new Date().toISOString().substring(0, 10),
+      occurredOn: toLocalYyyyMmDd(new Date()),
       note: note.trim(),
       source: 'manual',
       createdAt: new Date().toISOString(),
@@ -49,6 +55,7 @@ export function TransactionDialog({ open, onClose }: Props) {
 
     setAmount('');
     setNote('');
+    setError('');
     onClose();
   };
 
@@ -57,6 +64,7 @@ export function TransactionDialog({ open, onClose }: Props) {
       <DialogTitle>Tambah Transaksi</DialogTitle>
       <DialogContent>
         <Stack spacing={3} sx={{ mt: 1 }}>
+          {error && <Typography color="error">{error}</Typography>}
           <TextField
             select
             fullWidth

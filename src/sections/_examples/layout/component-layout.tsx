@@ -14,7 +14,7 @@ import Container from '@mui/material/Container';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 
-import { paths } from 'src/routes/paths';
+import { legacyPaths } from 'src/routes/legacy-paths';
 
 import { CONFIG } from 'src/global-config';
 
@@ -102,7 +102,10 @@ export function ComponentLayout({
           <>
             <CustomBreadcrumbs
               {...heroProps}
-              links={[{ name: 'Components', href: paths.components }, { name: heroProps?.heading }]}
+              links={[
+                { name: 'Components', href: legacyPaths.components },
+                { name: heroProps?.heading },
+              ]}
             />
             {heroProps?.additionalContent}
           </>

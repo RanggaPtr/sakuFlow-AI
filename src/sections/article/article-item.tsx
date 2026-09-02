@@ -9,8 +9,8 @@ import CardContent from '@mui/material/CardContent';
 import ListItemText from '@mui/material/ListItemText';
 import CardActionArea from '@mui/material/CardActionArea';
 
-import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
+import { legacyPaths } from 'src/routes/legacy-paths';
 
 import { fDate } from 'src/utils/format-time';
 
@@ -26,7 +26,7 @@ type ArticleItemProps = {
 };
 
 export function ArticleItem({ article, priority = false }: ArticleItemProps) {
-  const detailsHref = paths.article.details(article.slug);
+  const detailsHref = legacyPaths.article.details(article.slug);
 
   return (
     <Card sx={{ display: 'flex', flexDirection: 'column' }}>

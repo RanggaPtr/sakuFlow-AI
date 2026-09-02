@@ -35,6 +35,9 @@ export type TransactionCategory = (typeof TRANSACTION_CATEGORIES)[number];
 export type ObligationCategory = (typeof OBLIGATION_CATEGORIES)[number];
 export type GoalCategory = (typeof GOAL_CATEGORIES)[number];
 
+export const obligationCategorySchema = z.enum(OBLIGATION_CATEGORIES);
+export const goalCategorySchema = z.enum(GOAL_CATEGORIES);
+
 const OBLIGATION_TRANSACTION_CATEGORY: Record<ObligationCategory, TransactionCategory> = {
   housing: 'housing',
   utilities: 'housing',
@@ -49,3 +52,4 @@ export function obligationCategoryToTransactionCategory(
 ): TransactionCategory {
   return OBLIGATION_TRANSACTION_CATEGORY[category];
 }
+import { z } from 'zod';

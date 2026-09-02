@@ -1,6 +1,6 @@
 import { it, expect, describe } from 'vitest';
 
-import { formatRupiah, parseIndonesianMoney } from './money';
+import { formatRupiah, parseIndonesianMoney, parseStrictIntegerMoney } from './money';
 
 describe('money domain functions', () => {
   it('formats Rupiah correctly', () => {
@@ -13,5 +13,16 @@ describe('money domain functions', () => {
     expect(parseIndonesianMoney('gratis')).toBeNull();
     expect(parseIndonesianMoney('28.000')).toBe(28000);
     expect(parseIndonesianMoney('2 juta')).toBe(2000000);
+  });
+
+  it.each(['Rp 1000', '1.000', '1000.5', '-100', ''])(
+    'rejects coercive manual input %s',
+    (value) => {
+      expect(parseStrictIntegerMoney(value)).toBeNull();
+    }
+  );
+
+  it('parses only a positive safe integer for manual input', () => {
+    expect(parseStrictIntegerMoney('1000')).toBe(1000);
   });
 });

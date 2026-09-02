@@ -53,14 +53,14 @@ export function SimpleLayout({
       ),
       rightArea: (
         <Box sx={{ gap: 1, display: 'flex', alignItems: 'center' }}>
-          {/** @slot Help link */}
+          {/** @slot Return link */}
           <Link
             component={RouterLink}
-            href={paths.support}
+            href={paths.dashboard}
             color="inherit"
             sx={{ typography: 'subtitle2' }}
           >
-            FAQ
+            Kembali ke ringkasan
           </Link>
         </Box>
       ),

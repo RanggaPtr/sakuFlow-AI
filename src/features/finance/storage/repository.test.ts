@@ -110,7 +110,7 @@ describe('FinanceRepository', () => {
     const snapshot = makeFinanceSnapshot();
     const json = repo.exportJson(snapshot);
     const parsed = JSON.parse(json);
-    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.schemaVersion).toBe(2);
     expect(parsed.data.profile.id).toBe(snapshot.profile?.id);
   });
 
@@ -122,8 +122,22 @@ describe('FinanceRepository', () => {
     const snapshot = makeFinanceSnapshot();
     const envelope = repo.importJson(repo.exportJson(snapshot));
 
-    expect(envelope.schemaVersion).toBe(1);
+    expect(envelope.schemaVersion).toBe(2);
     expect(envelope.data).toEqual(snapshot);
+  });
+
+  it('migrates version one cycles without recurring income to version two data', () => {
+    const snapshot = makeFinanceSnapshot();
+    const legacy = JSON.stringify({
+      schemaVersion: 1,
+      savedAt: '2026-08-01T00:00:00.000Z',
+      data: snapshot,
+    });
+
+    const envelope = repo.importJson(legacy);
+
+    expect(envelope.schemaVersion).toBe(2);
+    expect(envelope.data.cycle?.recurringIncome).toBe(0);
   });
 
   it('rejects imports larger than one MiB before parsing', () => {

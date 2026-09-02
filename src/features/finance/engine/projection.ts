@@ -14,6 +14,7 @@ export type ProjectionReasonCode =
 
 export interface FinanceProjection {
   recordedIncome: number;
+  recurringIncome: number;
   spent: number;
   liquidBalance: number;
   unpaidObligationReserve: number;
@@ -30,6 +31,7 @@ export function projectBudget(snapshot: FinanceSnapshot, today: string): Finance
   if (!snapshot.cycle) {
     return {
       recordedIncome: 0,
+      recurringIncome: 0,
       spent: 0,
       liquidBalance: 0,
       unpaidObligationReserve: 0,
@@ -97,6 +99,7 @@ export function projectBudget(snapshot: FinanceSnapshot, today: string): Finance
 
   return {
     recordedIncome,
+    recurringIncome: cycle.recurringIncome,
     spent,
     liquidBalance,
     unpaidObligationReserve,

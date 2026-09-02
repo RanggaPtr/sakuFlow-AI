@@ -6,9 +6,10 @@ import {
   TRANSACTION_TYPES,
   OBLIGATION_CATEGORIES,
   TRANSACTION_CATEGORIES,
+  obligationCategoryToTransactionCategory,
 } from './categories';
 
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 export const moneySchema = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const positiveMoneySchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -27,12 +28,25 @@ export const financeProfileSchema = z.object({
 });
 export type FinanceProfile = z.infer<typeof financeProfileSchema>;
 
+export const legacyBudgetCycleSchema = z
+  .object({
+    id: uuidSchema,
+    startsOn: yyyyMmDdSchema,
+    nextIncomeOn: yyyyMmDdSchema,
+    openingBalance: moneySchema,
+    bufferAmount: moneySchema,
+  })
+  .refine((data) => data.nextIncomeOn > data.startsOn, {
+    message: 'nextIncomeOn must be after startsOn',
+  });
+
 export const budgetCycleSchema = z
   .object({
     id: uuidSchema,
     startsOn: yyyyMmDdSchema,
     nextIncomeOn: yyyyMmDdSchema,
     openingBalance: moneySchema,
+    recurringIncome: moneySchema,
     bufferAmount: moneySchema,
   })
   .refine((data) => data.nextIncomeOn > data.startsOn, {
@@ -94,7 +108,7 @@ export const allocationSettingsSchema = z.object({
 });
 export type AllocationSettings = z.infer<typeof allocationSettingsSchema>;
 
-export const financeSnapshotSchema = z.object({
+export const financeSnapshotBaseSchema = z.object({
   profile: financeProfileSchema.nullable(),
   cycle: budgetCycleSchema.nullable(),
   transactions: z.array(transactionSchema),
@@ -102,7 +116,48 @@ export const financeSnapshotSchema = z.object({
   goals: z.array(savingsGoalSchema),
   allocation: allocationSettingsSchema,
 });
-export type FinanceSnapshot = z.infer<typeof financeSnapshotSchema>;
+
+export const financeSnapshotSchema = financeSnapshotBaseSchema.superRefine((snapshot, ctx) => {
+  const entities: Array<{ id: string; path: Array<string | number> }> = [
+    ...(snapshot.profile ? [{ id: snapshot.profile.id, path: ['profile', 'id'] }] : []),
+    ...(snapshot.cycle ? [{ id: snapshot.cycle.id, path: ['cycle', 'id'] }] : []),
+    ...snapshot.transactions.map((item, index) => ({
+      id: item.id,
+      path: ['transactions', index, 'id'],
+    })),
+    ...snapshot.obligations.map((item, index) => ({
+      id: item.id,
+      path: ['obligations', index, 'id'],
+    })),
+    ...snapshot.goals.map((item, index) => ({ id: item.id, path: ['goals', index, 'id'] })),
+  ];
+  const seen = new Set<string>();
+  for (const entity of entities) {
+    if (seen.has(entity.id)) {
+      ctx.addIssue({ code: 'custom', path: entity.path, message: 'Entity IDs must be unique' });
+    }
+    seen.add(entity.id);
+  }
+
+  const transactionsById = new Map(snapshot.transactions.map((item) => [item.id, item]));
+  snapshot.obligations.forEach((obligation, index) => {
+    if (obligation.status !== 'paid' || !obligation.paidTransactionId) return;
+    const payment = transactionsById.get(obligation.paidTransactionId);
+    if (
+      !payment ||
+      payment.type !== 'expense' ||
+      payment.amount !== obligation.amount ||
+      payment.category !== obligationCategoryToTransactionCategory(obligation.category)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['obligations', index, 'paidTransactionId'],
+        message: 'Paid obligation must reference its matching payment transaction',
+      });
+    }
+  });
+});
+export type FinanceSnapshot = z.infer<typeof financeSnapshotBaseSchema>;
 
 export const persistenceEnvelopeSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),

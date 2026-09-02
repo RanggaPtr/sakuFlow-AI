@@ -105,4 +105,61 @@ describe('financeReducer', () => {
     expect(goal?.status).toBe('active');
     expect(nextState.snapshot.transactions).toContainEqual(action.transaction);
   });
+
+  it('rejects deleting a transaction linked to a paid obligation', () => {
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: makeFinanceSnapshot(),
+      corruptRawValue: null,
+    };
+    const obligationId = state.snapshot.obligations[0]!.id;
+    const payment = {
+      id: '99999999-9999-4999-8999-999999999999',
+      type: 'expense' as const,
+      amount: 1000000,
+      category: 'housing' as const,
+      createdAt: '2026-08-01T00:00:00Z',
+      note: 'Pay rent',
+      occurredOn: '2026-08-01',
+      source: 'manual' as const,
+    };
+    const paidState = financeReducer(state, {
+      type: 'mark-obligation-paid',
+      obligationId,
+      transaction: payment,
+    });
+
+    expect(
+      financeReducer(paidState, { type: 'delete-transaction', transactionId: payment.id })
+    ).toBe(paidState);
+  });
+
+  it('rejects deleting a savings transaction to avoid losing goal linkage', () => {
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: makeFinanceSnapshot({
+        goals: [{ ...makeFinanceSnapshot().goals[0]!, contributedAmount: 200000 }],
+        transactions: [
+          {
+            id: '99999999-9999-4999-8999-999999999999',
+            type: 'expense',
+            amount: 200000,
+            category: 'savings',
+            createdAt: '2026-08-01T00:00:00Z',
+            note: 'Savings',
+            occurredOn: '2026-08-01',
+            source: 'manual',
+          },
+        ],
+      }),
+      corruptRawValue: null,
+    };
+
+    expect(
+      financeReducer(state, {
+        type: 'delete-transaction',
+        transactionId: '99999999-9999-4999-8999-999999999999',
+      })
+    ).toBe(state);
+  });
 });

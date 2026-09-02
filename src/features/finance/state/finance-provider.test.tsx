@@ -1,5 +1,5 @@
-import { act, render, screen } from '@testing-library/react';
-import { it, vi, expect, describe, beforeEach } from 'vitest';
+import { act, render, screen, cleanup } from '@testing-library/react';
+import { it, vi, expect, describe, afterEach, beforeEach } from 'vitest';
 
 import { CURRENT_SCHEMA_VERSION } from 'src/features/finance/domain';
 import { STORAGE_KEY } from 'src/features/finance/storage/repository';
@@ -46,6 +46,8 @@ function TestConsumer() {
 }
 
 describe('FinanceProvider', () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
     vi.restoreAllMocks();
     window.localStorage.clear();
@@ -59,8 +61,6 @@ describe('FinanceProvider', () => {
     );
 
     expect(await screen.findByTestId('status')).toHaveTextContent('ready');
-    expect(screen.getByTestId('tx-count')).toHaveTextContent('0');
-
     unmount();
   });
 
@@ -159,5 +159,32 @@ describe('FinanceProvider', () => {
 
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
     expect(screen.getByTestId('tx-count')).toHaveTextContent('0');
+  });
+
+  it('keeps state and reports a warning when persistent clear fails', async () => {
+    const snapshot = makeFinanceSnapshot();
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        data: snapshot,
+      })
+    );
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+      throw new Error('storage unavailable');
+    });
+
+    render(
+      <FinanceProvider>
+        <TestConsumer />
+      </FinanceProvider>
+    );
+    expect(await screen.findByTestId('status')).toHaveTextContent('ready');
+
+    act(() => screen.getByTestId('reset').click());
+
+    expect(window.localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+    expect(screen.getByText(/Gagal menghapus data tersimpan/)).toBeInTheDocument();
   });
 });

@@ -10,8 +10,8 @@ import Typography from '@mui/material/Typography';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
 
-import { paths } from 'src/routes/paths';
 import { RouterLink } from 'src/routes/components';
+import { legacyPaths } from 'src/routes/legacy-paths';
 
 import { Iconify } from 'src/components/iconify';
 
@@ -61,7 +61,7 @@ export function HomeFaqs({ groups }: HomeFaqsProps) {
           <Box sx={{ mt: 5, textAlign: 'center' }}>
             <Button
               component={RouterLink}
-              href={paths.support}
+              href={legacyPaths.support}
               size="large"
               color="primary"
               variant="outlined"

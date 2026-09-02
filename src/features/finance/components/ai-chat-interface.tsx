@@ -1,5 +1,6 @@
 'use client';
 
+import type { FinanceIntent } from 'src/features/finance/ai';
 import type { Transaction } from 'src/features/finance/domain';
 
 import { useState } from 'react';
@@ -15,7 +16,13 @@ import Typography from '@mui/material/Typography';
 
 import { useFinance } from 'src/features/finance/state';
 import { interpretTransactionText } from 'src/features/finance/ai';
-import { transactionTypeSchema } from 'src/features/finance/domain';
+import {
+  buildGoal,
+  buildObligation,
+  toLocalYyyyMmDd,
+  transactionTypeSchema,
+  obligationCategoryToTransactionCategory,
+} from 'src/features/finance/domain';
 
 interface Message {
   id: string;
@@ -24,7 +31,7 @@ interface Message {
 }
 
 export function AiChatInterface() {
-  const { dispatch } = useFinance();
+  const { dispatch, state } = useFinance();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -35,6 +42,7 @@ export function AiChatInterface() {
   ]);
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState<Transaction | null>(null);
+  const [intentDraft, setIntentDraft] = useState<FinanceIntent | null>(null);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,13 +67,13 @@ export function AiChatInterface() {
             text: 'Maaf, SakuFlow belum mengerti maksudnya. Bisa lebih spesifik? (Contoh: "Makan 50k")',
           },
         ]);
-      } else {
+      } else if (intent.type === 'expense' || intent.type === 'income') {
         const transaction: Transaction = {
           id: crypto.randomUUID(),
           type: intent.type,
           category: 'other',
           amount: intent.amount,
-          occurredOn: new Date().toISOString().substring(0, 10),
+          occurredOn: toLocalYyyyMmDd(new Date()),
           note: intent.note || userText,
           source: 'natural-language',
           createdAt: new Date().toISOString(),
@@ -80,6 +88,16 @@ export function AiChatInterface() {
             id: crypto.randomUUID(),
             sender: 'ai',
             text: 'Saya menemukan detail berikut. Silakan cek dan konfirmasi sebelum disimpan:',
+          },
+        ]);
+      } else {
+        setIntentDraft(intent);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            sender: 'ai',
+            text: 'Saya menemukan tindakan berikut. Periksa lalu konfirmasi sebelum diterapkan:',
           },
         ]);
       }
@@ -130,6 +148,109 @@ export function AiChatInterface() {
       },
     ]);
   };
+
+  const handleConfirmIntent = () => {
+    if (!intentDraft) return;
+    const now = new Date();
+    switch (intentDraft.type) {
+      case 'add_obligation':
+        dispatch({
+          type: 'add-obligation',
+          obligation: buildObligation(
+            {
+              name: intentDraft.name,
+              amount: String(intentDraft.amount),
+              dueOn: intentDraft.dueOn,
+              category: intentDraft.category,
+            },
+            now,
+            () => crypto.randomUUID()
+          ),
+        });
+        break;
+      case 'create_goal':
+        dispatch({
+          type: 'add-goal',
+          goal: buildGoal(
+            {
+              name: intentDraft.name,
+              targetAmount: String(intentDraft.targetAmount),
+              targetDate: intentDraft.targetDate ?? '',
+              category: intentDraft.category,
+            },
+            now,
+            () => crypto.randomUUID()
+          ),
+        });
+        break;
+      case 'simulate_purchase':
+        dispatch({
+          type: 'add-transaction',
+          transaction: {
+            id: crypto.randomUUID(),
+            type: 'expense',
+            category: 'other',
+            amount: intentDraft.amount,
+            occurredOn: toLocalYyyyMmDd(now),
+            note: intentDraft.note,
+            source: 'manual',
+            createdAt: now.toISOString(),
+          },
+        });
+        break;
+      case 'mark_obligation_paid': {
+        const obligation = state.snapshot.obligations.find(
+          (item) =>
+            item.name.toLowerCase() === intentDraft.obligationName.toLowerCase() &&
+            item.amount === intentDraft.amount
+        );
+        if (obligation) {
+          dispatch({
+            type: 'mark-obligation-paid',
+            obligationId: obligation.id,
+            transaction: {
+              id: crypto.randomUUID(),
+              type: 'expense',
+              category: obligationCategoryToTransactionCategory(obligation.category),
+              amount: obligation.amount,
+              occurredOn: toLocalYyyyMmDd(now),
+              note: `Bayar ${obligation.name}`,
+              source: 'manual',
+              createdAt: now.toISOString(),
+            },
+          });
+        }
+        break;
+      }
+      case 'ask_summary':
+        break;
+      default:
+        break;
+    }
+    setIntentDraft(null);
+    setMessages((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), sender: 'ai', text: 'Tindakan dikonfirmasi.' },
+    ]);
+  };
+
+  const intentSummary = (() => {
+    if (!intentDraft) return '';
+    switch (intentDraft.type) {
+      case 'add_obligation':
+        return `Tambah tanggungan ${intentDraft.name} sebesar ${formatRp(intentDraft.amount)}.`;
+      case 'create_goal':
+        return `Tambah tujuan ${intentDraft.name} sebesar ${formatRp(intentDraft.targetAmount)}.`;
+      case 'simulate_purchase':
+        return `Simulasikan pembelian ${intentDraft.note} sebesar ${formatRp(intentDraft.amount)}.`;
+      case 'mark_obligation_paid':
+        return `Tandai ${intentDraft.obligationName} sebesar ${formatRp(intentDraft.amount)} sebagai lunas.`;
+      case 'ask_summary':
+        return `Ringkas kondisi keuangan: ${intentDraft.question}`;
+      default:
+        return '';
+    }
+  })();
 
   return (
     <Card sx={{ display: 'flex', flexDirection: 'column', height: 500, borderRadius: 2 }}>
@@ -221,6 +342,26 @@ export function AiChatInterface() {
             </Button>
             <Button variant="contained" color="primary" fullWidth onClick={handleConfirmDraft}>
               Simpan
+            </Button>
+          </Box>
+        </Box>
+      ) : intentDraft ? (
+        <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'background.neutral' }}>
+          <Typography variant="subtitle2">Pratinjau tindakan</Typography>
+          <Typography variant="body2" sx={{ my: 1 }}>
+            {intentSummary}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              color="inherit"
+              fullWidth
+              onClick={() => setIntentDraft(null)}
+            >
+              Batal
+            </Button>
+            <Button variant="contained" fullWidth onClick={handleConfirmIntent}>
+              Konfirmasi tindakan
             </Button>
           </Box>
         </Box>

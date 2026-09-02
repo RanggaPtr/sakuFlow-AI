@@ -4,7 +4,8 @@ import { paths } from 'src/routes/paths';
 
 // Tambahkan menu baru SETELAH halamannya ada (path dari paths.ts, bukan '#').
 export const navData = [
-  { title: 'Home', path: paths.home },
-  { title: 'Article', path: paths.article.root },
-  { title: 'FAQ', path: paths.support },
+  { title: 'Ringkasan', path: paths.dashboard },
+  { title: 'Transaksi', path: paths.transactions },
+  { title: 'Rencana', path: paths.plan },
+  { title: 'Wawasan', path: paths.insights },
 ];

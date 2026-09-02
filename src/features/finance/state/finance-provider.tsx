@@ -7,8 +7,8 @@ import type { FinanceRepository } from 'src/features/finance/storage/repository'
 
 import { useRef, useState, useEffect, useReducer, createContext } from 'react';
 
-import { createEmptyFinanceSnapshot } from 'src/features/finance/domain';
 import { createFinanceRepository } from 'src/features/finance/storage/repository';
+import { toLocalYyyyMmDd, createEmptyFinanceSnapshot } from 'src/features/finance/domain';
 
 import { selectIsOnboarded } from './selectors';
 import { financeReducer } from './finance-reducer';
@@ -17,11 +17,12 @@ export interface FinanceContextValue {
   state: FinanceState;
   dispatch: React.Dispatch<FinanceAction>;
   persistence: {
-    reset(): void;
+    reset(): boolean;
     exportJson(): string;
     parseImport(raw: string): PersistenceEnvelope;
     confirmImport(envelope: PersistenceEnvelope): void;
   };
+  persistenceError?: string;
 }
 
 export const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -33,6 +34,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     corruptRawValue: null,
   });
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [persistenceError, setPersistenceError] = useState<string | null>(null);
 
   const repoRef = useRef<FinanceRepository | null>(null);
 
@@ -64,7 +66,7 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sakuflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `sakuflow-backup-${toLocalYyyyMmDd(new Date())}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -78,8 +80,15 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
 
   const persistence: FinanceContextValue['persistence'] = {
     reset() {
-      getRepository().clear();
+      try {
+        getRepository().clear();
+      } catch {
+        setPersistenceError('Gagal menghapus data tersimpan. Data lama dipertahankan.');
+        return false;
+      }
+      setPersistenceError(null);
       dispatch({ type: 'reset' });
+      return true;
     },
     exportJson() {
       return getRepository().exportJson(state.snapshot);
@@ -93,7 +102,14 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <FinanceContext.Provider value={{ state, dispatch, persistence }}>
+    <FinanceContext.Provider
+      value={{ state, dispatch, persistence, persistenceError: persistenceError ?? undefined }}
+    >
+      {persistenceError && (
+        <div role="alert" style={{ padding: 12, backgroundColor: '#fef2f2', color: '#991b1b' }}>
+          {persistenceError}
+        </div>
+      )}
       {saveError && (
         <div
           style={{

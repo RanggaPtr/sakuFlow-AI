@@ -9,7 +9,7 @@ import Container from '@mui/material/Container';
 import Typography from '@mui/material/Typography';
 import ListItemText from '@mui/material/ListItemText';
 
-import { paths } from 'src/routes/paths';
+import { legacyPaths } from 'src/routes/legacy-paths';
 
 import { fDate } from 'src/utils/format-time';
 
@@ -36,7 +36,7 @@ export function ArticleDetailsView({ article, relatedArticles = [] }: ArticleDet
       <CustomBreadcrumbs
         links={[
           { name: 'Home', href: '/' },
-          { name: 'Article', href: paths.article.root },
+          { name: 'Article', href: legacyPaths.article.root },
           { name: article.title },
         ]}
         sx={{ mb: { xs: 3, md: 5 } }}

@@ -30,6 +30,16 @@ describe('fallbackInterpretation', () => {
       type: 'unknown',
     });
   });
+
+  it.each([
+    ['tagihan listrik 200rb', 'add_obligation'],
+    ['target laptop 5jt', 'create_goal'],
+    ['simulasi beli sepatu 750rb', 'simulate_purchase'],
+    ['ringkas kondisi keuangan', 'ask_summary'],
+    ['tandai sewa lunas 1jt', 'mark_obligation_paid'],
+  ])('recognizes supported action %s', (text, type) => {
+    expect(fallbackInterpretation(text)).toMatchObject({ type });
+  });
 });
 
 describe('interpretTransactionText', () => {

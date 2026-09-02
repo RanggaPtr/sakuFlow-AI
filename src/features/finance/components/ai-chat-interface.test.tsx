@@ -33,7 +33,7 @@ describe('AiChatInterface Draft Flow', () => {
         exportJson: vi.fn(() => ''),
         parseImport: vi.fn(
           (_raw: string): PersistenceEnvelope => ({
-            schemaVersion: 1,
+            schemaVersion: 2,
             savedAt: '2026-08-01T00:00:00.000Z',
             data: makeFinanceSnapshot(),
           })
