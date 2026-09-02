@@ -1,6 +1,6 @@
 import { it, expect, describe } from 'vitest';
 
-import { isIsoDate, isYyyyMmDd, clampIncomeDay, daysUntilIncome } from './date';
+import { isIsoDate, isYyyyMmDd, clampIncomeDay, daysUntilIncome, toLocalYyyyMmDd } from './date';
 
 describe('date domain functions', () => {
   it('validates ISO dates correctly', () => {
@@ -30,5 +30,9 @@ describe('date domain functions', () => {
     expect(clampIncomeDay(2024, 1, 30)).toBe(29);
     // Normal day
     expect(clampIncomeDay(2026, 7, 11)).toBe(11); // August 11
+  });
+
+  it('formats date-only values from local calendar fields', () => {
+    expect(toLocalYyyyMmDd(new Date(2026, 7, 9, 23, 59, 59))).toBe('2026-08-09');
   });
 });

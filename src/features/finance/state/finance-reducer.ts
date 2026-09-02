@@ -6,6 +6,15 @@ import type {
   FinanceSnapshot,
 } from 'src/features/finance/domain';
 
+import {
+  obligationSchema,
+  savingsGoalSchema,
+  transactionSchema,
+  financeSnapshotSchema,
+  createEmptyFinanceSnapshot,
+  obligationCategoryToTransactionCategory,
+} from 'src/features/finance/domain';
+
 export interface FinanceState {
   hydration: 'idle' | 'ready' | 'corrupt';
   snapshot: FinanceSnapshot;
@@ -27,29 +36,34 @@ export type FinanceAction =
 export function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
   switch (action.type) {
     case 'hydrate': {
+      const snapshot = financeSnapshotSchema.safeParse(action.result.snapshot);
+      if (!snapshot.success) return state;
       return {
         hydration: action.result.status === 'empty' ? 'ready' : action.result.status,
-        snapshot: action.result.snapshot,
+        snapshot: snapshot.data,
         corruptRawValue: action.result.status === 'corrupt' ? action.result.rawValue : null,
       };
     }
     case 'complete-onboarding':
     case 'replace-from-import': {
+      const snapshot = financeSnapshotSchema.safeParse(action.snapshot);
+      if (!snapshot.success) return state;
       return {
         ...state,
         hydration: 'ready',
-        snapshot: action.snapshot,
+        snapshot: snapshot.data,
         corruptRawValue: null,
       };
     }
     case 'add-transaction': {
-      if (action.transaction.amount <= 0) return state;
-      if (state.snapshot.transactions.some((t) => t.id === action.transaction.id)) return state;
+      const candidate = transactionSchema.safeParse(action.transaction);
+      if (!candidate.success) return state;
+      if (state.snapshot.transactions.some((t) => t.id === candidate.data.id)) return state;
       return {
         ...state,
         snapshot: {
           ...state.snapshot,
-          transactions: [...state.snapshot.transactions, action.transaction],
+          transactions: [...state.snapshot.transactions, candidate.data],
         },
       };
     }
@@ -64,68 +78,63 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
       };
     }
     case 'add-obligation': {
-      if (state.snapshot.obligations.some((o) => o.id === action.obligation.id)) return state;
-      if (action.obligation.amount <= 0) return state;
+      const candidate = obligationSchema.safeParse(action.obligation);
+      if (!candidate.success) return state;
+      if (state.snapshot.obligations.some((o) => o.id === candidate.data.id)) return state;
       return {
         ...state,
         snapshot: {
           ...state.snapshot,
-          obligations: [...state.snapshot.obligations, action.obligation],
+          obligations: [...state.snapshot.obligations, candidate.data],
         },
       };
     }
     case 'mark-obligation-paid': {
       const obligation = state.snapshot.obligations.find((o) => o.id === action.obligationId);
+      const candidate = transactionSchema.safeParse(action.transaction);
       if (!obligation || obligation.status === 'paid') return state;
-      if (action.transaction.amount <= 0) return state;
-      if (action.transaction.type !== 'expense') return state;
-      if (action.transaction.amount !== obligation.amount) return state;
-      if (state.snapshot.transactions.some((t) => t.id === action.transaction.id)) return state;
-
-      // Category mismatch: if the obligation category exists in transaction categories, it must match.
-      // If it doesn't (e.g. utilities, subscription), transaction category can be something else (like 'housing' or 'other').
-      // Let's enforce that if they share the exact name, they must match.
-      if (
-        ['housing', 'education', 'debt', 'other'].includes(obligation.category) &&
-        action.transaction.category !== obligation.category
-      ) {
+      if (!candidate.success) return state;
+      if (candidate.data.type !== 'expense') return state;
+      if (candidate.data.amount !== obligation.amount) return state;
+      if (state.snapshot.transactions.some((t) => t.id === candidate.data.id)) return state;
+      if (candidate.data.category !== obligationCategoryToTransactionCategory(obligation.category))
         return state;
-      }
 
       return {
         ...state,
         snapshot: {
           ...state.snapshot,
-          transactions: [...state.snapshot.transactions, action.transaction],
+          transactions: [...state.snapshot.transactions, candidate.data],
           obligations: state.snapshot.obligations.map((o) =>
             o.id === action.obligationId
-              ? { ...o, status: 'paid', paidTransactionId: action.transaction.id }
+              ? { ...o, status: 'paid', paidTransactionId: candidate.data.id }
               : o
           ),
         },
       };
     }
     case 'add-goal': {
-      if (state.snapshot.goals.some((g) => g.id === action.goal.id)) return state;
-      if (action.goal.targetAmount <= 0) return state;
+      const candidate = savingsGoalSchema.safeParse(action.goal);
+      if (!candidate.success) return state;
+      if (state.snapshot.goals.some((g) => g.id === candidate.data.id)) return state;
       return {
         ...state,
         snapshot: {
           ...state.snapshot,
-          goals: [...state.snapshot.goals, action.goal],
+          goals: [...state.snapshot.goals, candidate.data],
         },
       };
     }
     case 'contribute-to-goal': {
       const goal = state.snapshot.goals.find((g) => g.id === action.goalId);
+      const candidate = transactionSchema.safeParse(action.transaction);
       if (!goal || goal.status === 'completed') return state;
-      if (action.amount <= 0) return state;
-      if (action.transaction.amount <= 0) return state;
-      if (action.transaction.type !== 'expense' || action.transaction.category !== 'savings')
-        return state;
-      if (action.transaction.amount !== action.amount) return state;
+      if (!Number.isSafeInteger(action.amount) || action.amount <= 0) return state;
+      if (!candidate.success) return state;
+      if (candidate.data.type !== 'expense' || candidate.data.category !== 'savings') return state;
+      if (candidate.data.amount !== action.amount) return state;
       if (goal.contributedAmount + action.amount > goal.targetAmount) return state;
-      if (state.snapshot.transactions.some((t) => t.id === action.transaction.id)) return state;
+      if (state.snapshot.transactions.some((t) => t.id === candidate.data.id)) return state;
 
       const newContributed = goal.contributedAmount + action.amount;
       const newStatus = newContributed === goal.targetAmount ? 'completed' : 'active';
@@ -134,7 +143,7 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
         ...state,
         snapshot: {
           ...state.snapshot,
-          transactions: [...state.snapshot.transactions, action.transaction],
+          transactions: [...state.snapshot.transactions, candidate.data],
           goals: state.snapshot.goals.map((g) =>
             g.id === action.goalId
               ? { ...g, contributedAmount: newContributed, status: newStatus }
@@ -146,14 +155,7 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
     case 'reset': {
       return {
         hydration: 'ready',
-        snapshot: {
-          profile: null,
-          cycle: null,
-          transactions: [],
-          obligations: [],
-          goals: [],
-          allocation: { bufferMode: 'fixed', bufferAmount: 0 },
-        },
+        snapshot: createEmptyFinanceSnapshot(),
         corruptRawValue: null,
       };
     }

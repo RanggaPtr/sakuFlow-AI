@@ -7,7 +7,7 @@ import packageJson from '../package.json';
 // var wajib hilang). Konsumsi konfigurasi lewat objek ini, bukan process.env.
 
 export const CONFIG = {
-  appName: 'Venturo',
+  appName: 'SakuFlow AI',
   appVersion: packageJson.version,
   assetsDir: env.NEXT_PUBLIC_ASSETS_DIR,
   /** Tampilkan galeri referensi /components di build production (dev selalu tampil). */
@@ -30,4 +30,12 @@ export const CONFIG = {
   siteUrl: env.NEXT_PUBLIC_SITE_URL,
   /** Server-only: override URL API internal (k8s) untuk fetch RSC/sitemap. */
   serverApiUrl: env.API_URL,
+  /** Server-only OpenAI-compatible endpoint base URL; absent means deterministic local parsing. */
+  aiApiUrl: env.AI_API_URL,
+  /** Optional server-only bearer credential. Never read from client finance code. */
+  aiApiKey: env.AI_API_KEY,
+  /** Model identifier passed to the configured OpenAI-compatible endpoint. */
+  aiModel: env.AI_MODEL,
+  /** Bound external AI latency so local fallback remains responsive. */
+  aiTimeoutMs: 5000,
 };

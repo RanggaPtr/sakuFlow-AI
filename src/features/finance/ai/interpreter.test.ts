@@ -48,6 +48,7 @@ describe('interpretTransactionText', () => {
           type: 'expense',
           amount: 50000,
           category: 'food',
+          note: 'Makan',
         }),
     });
 
@@ -68,5 +69,31 @@ describe('interpretTransactionText', () => {
       type: 'expense',
       amount: 50000,
     });
+  });
+
+  it('validates the internal API response before returning it', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          type: 'expense',
+          amount: -50000,
+          category: 'provider-invented-category',
+          note: '',
+        }),
+    });
+
+    const result = await interpretTransactionText('makan 50k');
+
+    expect(result).toMatchObject({ type: 'expense', amount: 50000, category: 'other' });
+  });
+
+  it('rejects text longer than 500 characters without calling the server', async () => {
+    global.fetch = vi.fn();
+
+    const result = await interpretTransactionText('x'.repeat(501));
+
+    expect(result).toEqual({ type: 'unknown', reason: 'Input must be 1..500 characters' });
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 });

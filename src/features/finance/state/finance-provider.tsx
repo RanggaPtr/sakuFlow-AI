@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { FinanceState, FinanceAction } from './finance-reducer';
+import type { PersistenceEnvelope } from 'src/features/finance/domain';
 import type { FinanceRepository } from 'src/features/finance/storage/repository';
 
 import { useRef, useState, useEffect, useReducer, createContext } from 'react';
@@ -15,6 +16,12 @@ import { financeReducer } from './finance-reducer';
 export interface FinanceContextValue {
   state: FinanceState;
   dispatch: React.Dispatch<FinanceAction>;
+  persistence: {
+    reset(): void;
+    exportJson(): string;
+    parseImport(raw: string): PersistenceEnvelope;
+    confirmImport(envelope: PersistenceEnvelope): void;
+  };
 }
 
 export const FinanceContext = createContext<FinanceContextValue | null>(null);
@@ -64,8 +71,29 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
     URL.revokeObjectURL(url);
   };
 
+  const getRepository = () => {
+    if (!repoRef.current) throw new Error('Penyimpanan belum siap');
+    return repoRef.current;
+  };
+
+  const persistence: FinanceContextValue['persistence'] = {
+    reset() {
+      getRepository().clear();
+      dispatch({ type: 'reset' });
+    },
+    exportJson() {
+      return getRepository().exportJson(state.snapshot);
+    },
+    parseImport(raw) {
+      return getRepository().importJson(raw);
+    },
+    confirmImport(envelope) {
+      dispatch({ type: 'replace-from-import', snapshot: envelope.data });
+    },
+  };
+
   return (
-    <FinanceContext.Provider value={{ state, dispatch }}>
+    <FinanceContext.Provider value={{ state, dispatch, persistence }}>
       {saveError && (
         <div
           style={{

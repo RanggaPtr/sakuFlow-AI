@@ -1,8 +1,9 @@
 import { it, expect, describe, beforeEach } from 'vitest';
 
+import { createEmptyFinanceSnapshot } from 'src/features/finance/domain';
 import { makeFinanceSnapshot } from 'src/features/finance/test/fixtures';
 
-import { createFinanceRepository } from './repository';
+import { STORAGE_KEY, MAX_IMPORT_BYTES, createFinanceRepository } from './repository';
 
 class StorageFake {
   private store = new Map<string, string>();
@@ -28,8 +29,7 @@ describe('FinanceRepository', () => {
 
   it('loads empty when storage is empty', () => {
     const result = repo.load();
-    expect(result.status).toBe('empty');
-    expect(result.snapshot).toBeDefined();
+    expect(result).toEqual({ status: 'empty', snapshot: createEmptyFinanceSnapshot() });
   });
 
   it('performs valid round-trip', () => {
@@ -55,17 +55,21 @@ describe('FinanceRepository', () => {
   });
 
   it('rejects invalid snapshot on save', () => {
-    const invalidSnapshot: any = makeFinanceSnapshot();
-    invalidSnapshot.transactions.push({
-      id: '99999999-9999-4999-8999-999999999999',
-      type: 'expense',
-      amount: -100, // invalid amount
-      category: 'other',
-      createdAt: '2026-08-01T00:00:00Z',
-      note: 'test',
-      occurredOn: '2026-08-01',
-      source: 'manual',
-    });
+    const invalidSnapshot = {
+      ...makeFinanceSnapshot(),
+      transactions: [
+        {
+          id: '99999999-9999-4999-8999-999999999999',
+          type: 'expense',
+          amount: -100,
+          category: 'other',
+          createdAt: '2026-08-01T00:00:00Z',
+          note: 'test',
+          occurredOn: '2026-08-01',
+          source: 'manual',
+        },
+      ],
+    };
     const saveResult = repo.save(invalidSnapshot);
     expect(saveResult).toEqual({ ok: false, code: 'invalid-data' });
   });
@@ -92,6 +96,16 @@ describe('FinanceRepository', () => {
     expect(repo.load().status).toBe('empty');
   });
 
+  it('clears corrupt raw storage', () => {
+    storage.setItem(STORAGE_KEY, '{not-json');
+    expect(repo.load().status).toBe('corrupt');
+
+    repo.clear();
+
+    expect(storage.getItem(STORAGE_KEY)).toBeNull();
+    expect(repo.load().status).toBe('empty');
+  });
+
   it('exports stable json', () => {
     const snapshot = makeFinanceSnapshot();
     const json = repo.exportJson(snapshot);
@@ -102,5 +116,19 @@ describe('FinanceRepository', () => {
 
   it('rejects invalid import', () => {
     expect(() => repo.importJson('{ foo }')).toThrow();
+  });
+
+  it('imports the same versioned envelope produced by export', () => {
+    const snapshot = makeFinanceSnapshot();
+    const envelope = repo.importJson(repo.exportJson(snapshot));
+
+    expect(envelope.schemaVersion).toBe(1);
+    expect(envelope.data).toEqual(snapshot);
+  });
+
+  it('rejects imports larger than one MiB before parsing', () => {
+    const oversized = 'x'.repeat(MAX_IMPORT_BYTES + 1);
+
+    expect(() => repo.importJson(oversized)).toThrow(/1 MiB/);
   });
 });

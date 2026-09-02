@@ -20,6 +20,10 @@ interface Props {
   onClose: () => void;
 }
 
+export function isTransactionType(value: string): value is Transaction['type'] {
+  return value === 'expense' || value === 'income';
+}
+
 export function TransactionDialog({ open, onClose }: Props) {
   const { dispatch } = useFinance();
   const [type, setType] = useState<'expense' | 'income'>('expense');
@@ -58,7 +62,9 @@ export function TransactionDialog({ open, onClose }: Props) {
             fullWidth
             label="Jenis"
             value={type}
-            onChange={(e) => setType(e.target.value as any)}
+            onChange={(event) => {
+              if (isTransactionType(event.target.value)) setType(event.target.value);
+            }}
           >
             <MenuItem value="expense">Pengeluaran</MenuItem>
             <MenuItem value="income">Pemasukan</MenuItem>

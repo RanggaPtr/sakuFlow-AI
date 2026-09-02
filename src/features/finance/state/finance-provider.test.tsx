@@ -9,7 +9,7 @@ import { useFinance } from './use-finance';
 import { FinanceProvider } from './finance-provider';
 
 function TestConsumer() {
-  const { state, dispatch } = useFinance();
+  const { state, dispatch, persistence } = useFinance();
 
   if (state.hydration === 'idle') return <div data-testid="status">idle</div>;
   if (state.hydration === 'corrupt') return <div data-testid="status">corrupt</div>;
@@ -38,12 +38,16 @@ function TestConsumer() {
       >
         Add Tx
       </button>
+      <button data-testid="reset" onClick={persistence.reset}>
+        Reset
+      </button>
     </div>
   );
 }
 
 describe('FinanceProvider', () => {
   beforeEach(() => {
+    vi.restoreAllMocks();
     window.localStorage.clear();
   });
 
@@ -132,5 +136,28 @@ describe('FinanceProvider', () => {
 
     setItemSpy.mockRestore();
     unmount();
+  });
+
+  it('clears persisted data before resetting in-memory state', async () => {
+    const snapshot = makeFinanceSnapshot();
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: CURRENT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        data: snapshot,
+      })
+    );
+    render(
+      <FinanceProvider>
+        <TestConsumer />
+      </FinanceProvider>
+    );
+    expect(await screen.findByTestId('status')).toHaveTextContent('ready');
+
+    act(() => screen.getByTestId('reset').click());
+
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(screen.getByTestId('tx-count')).toHaveTextContent('0');
   });
 });

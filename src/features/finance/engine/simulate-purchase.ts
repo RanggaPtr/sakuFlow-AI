@@ -30,22 +30,20 @@ export function simulatePurchase(input: PurchaseSimulationInput): PurchaseSimula
   }
 
   const before = projectBudget(snapshot, today);
+  const simulationTransaction: Transaction = {
+    id: '99999999-9999-4999-8999-999999999999',
+    type: 'expense',
+    category: 'other',
+    amount,
+    occurredOn: today,
+    note: 'Simulation',
+    source: 'simulation',
+    createdAt: `${today}T00:00:00.000Z`,
+  };
 
   const simulatedSnapshot: FinanceSnapshot = {
     ...snapshot,
-    transactions: [
-      ...snapshot.transactions,
-      {
-        id: '99999999-9999-4999-8999-999999999999',
-        type: 'expense',
-        category: 'other',
-        amount,
-        occurredOn: today.substring(0, 10), // Ensure valid date if datetime passed
-        note: 'Simulation',
-        source: 'simulation',
-        createdAt: new Date().toISOString(),
-      } as Transaction,
-    ],
+    transactions: [...snapshot.transactions, simulationTransaction],
   };
 
   const after = projectBudget(simulatedSnapshot, today);

@@ -9,25 +9,18 @@
 export const pathWithSlash = (path: string) => (path.endsWith('/') ? path : `${path}/`);
 
 export const paths = {
-  home: '/',
-  /**
-   * Article
-   */
+  root: '/',
+  dashboard: '/dashboard',
+  onboarding: '/onboarding',
+  transactions: '/transactions',
+  plan: '/plan',
+  insights: '/insights',
+  settings: '/settings',
+  home: '/dashboard', // alias for old Venturo routes
+  support: '/support',
+  components: '/components',
   article: {
     root: '/article',
     details: (slug: string) => `/article/${slug}`,
   },
-  /**
-   * Common
-   */
-  maintenance: '/maintenance',
-  comingSoon: '/coming-soon',
-  support: '/support',
-  page404: '/error/404',
-  page500: '/error/500',
-  /**
-   * Others
-   */
-  blank: '/blank',
-  components: '/components',
 };

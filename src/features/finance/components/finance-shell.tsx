@@ -8,6 +8,8 @@ import Box from '@mui/material/Box';
 import BottomNavigation from '@mui/material/BottomNavigation';
 import BottomNavigationAction from '@mui/material/BottomNavigationAction';
 
+import { paths } from 'src/routes/paths';
+
 import { FinanceGuard } from './finance-guard';
 
 export function FinanceShell({ children }: { children: ReactNode }) {
@@ -34,9 +36,11 @@ export function FinanceShell({ children }: { children: ReactNode }) {
           value={pathname}
           onChange={handleChange}
         >
-          <BottomNavigationAction label="Dashboard" value="/dashboard" />
-          <BottomNavigationAction label="Riwayat" value="/plan" />
-          <BottomNavigationAction label="Settings" value="/settings" />
+          <BottomNavigationAction label="Dasbor" value={paths.dashboard} />
+          <BottomNavigationAction label="Transaksi" value={paths.transactions} />
+          <BottomNavigationAction label="Rencana" value={paths.plan} />
+          <BottomNavigationAction label="Wawasan" value={paths.insights} />
+          <BottomNavigationAction label="Pengaturan" value={paths.settings} />
         </BottomNavigation>
       </Box>
     </FinanceGuard>

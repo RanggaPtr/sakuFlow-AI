@@ -4,6 +4,7 @@ import { render, screen, waitFor, cleanup } from '@testing-library/react';
 
 import { useFinance } from 'src/features/finance/state';
 import { interpretTransactionText } from 'src/features/finance/ai';
+import { makeFinanceSnapshot } from 'src/features/finance/test/fixtures';
 
 import { AiChatInterface } from './ai-chat-interface';
 
@@ -16,12 +17,30 @@ vi.mock('src/features/finance/ai', () => ({
 }));
 
 describe('AiChatInterface Draft Flow', () => {
-  let dispatchMock: any;
+  const dispatchMock = vi.fn();
 
   beforeEach(() => {
-    dispatchMock = vi.fn();
-    (useFinance as any).mockReturnValue({ dispatch: dispatchMock });
     vi.clearAllMocks();
+    vi.mocked(useFinance).mockReturnValue({
+      state: {
+        hydration: 'ready',
+        snapshot: makeFinanceSnapshot(),
+        corruptRawValue: null,
+      },
+      dispatch: dispatchMock,
+      persistence: {
+        reset: vi.fn(),
+        exportJson: vi.fn(() => ''),
+        parseImport: vi.fn(
+          (_raw: string): PersistenceEnvelope => ({
+            schemaVersion: 1,
+            savedAt: '2026-08-01T00:00:00.000Z',
+            data: makeFinanceSnapshot(),
+          })
+        ),
+        confirmImport: vi.fn(),
+      },
+    });
   });
 
   afterEach(() => {
@@ -29,7 +48,7 @@ describe('AiChatInterface Draft Flow', () => {
   });
 
   it('allows user to confirm draft and dispatches action', async () => {
-    (interpretTransactionText as any).mockResolvedValue({
+    vi.mocked(interpretTransactionText).mockResolvedValue({
       type: 'expense',
       amount: 50000,
       category: 'food',
@@ -69,7 +88,7 @@ describe('AiChatInterface Draft Flow', () => {
   });
 
   it('allows user to cancel draft', async () => {
-    (interpretTransactionText as any).mockResolvedValue({
+    vi.mocked(interpretTransactionText).mockResolvedValue({
       type: 'expense',
       amount: 50000,
       category: 'food',
@@ -94,7 +113,7 @@ describe('AiChatInterface Draft Flow', () => {
   });
 
   it('allows user to edit draft before confirming', async () => {
-    (interpretTransactionText as any).mockResolvedValue({
+    vi.mocked(interpretTransactionText).mockResolvedValue({
       type: 'expense',
       amount: 50000,
       category: 'food',
@@ -133,3 +152,4 @@ describe('AiChatInterface Draft Flow', () => {
     );
   });
 });
+import type { PersistenceEnvelope } from 'src/features/finance/domain';

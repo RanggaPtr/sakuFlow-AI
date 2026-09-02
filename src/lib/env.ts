@@ -30,6 +30,9 @@ const rawEnv = {
   // on-demand dari backend/CMS). Endpoint nonaktif bila tidak di-set.
   REVALIDATE_TOKEN:
     typeof window === 'undefined' ? emptyToUndefined(process.env.REVALIDATE_TOKEN) : undefined,
+  AI_API_URL: typeof window === 'undefined' ? emptyToUndefined(process.env.AI_API_URL) : undefined,
+  AI_API_KEY: typeof window === 'undefined' ? emptyToUndefined(process.env.AI_API_KEY) : undefined,
+  AI_MODEL: typeof window === 'undefined' ? emptyToUndefined(process.env.AI_MODEL) : undefined,
 };
 
 const schema = z.object({
@@ -42,6 +45,9 @@ const schema = z.object({
   NEXT_PUBLIC_SHOW_COMPONENTS: z.string().default(''),
   API_URL: z.url().optional(),
   REVALIDATE_TOKEN: z.string().min(16).optional(),
+  AI_API_URL: z.url().optional(),
+  AI_API_KEY: z.string().min(1).optional(),
+  AI_MODEL: z.string().min(1).default('default'),
 });
 
 const parsed = schema.safeParse(rawEnv);

@@ -9,6 +9,7 @@ import {
 import { migrateEnvelope } from './migrations';
 
 export const STORAGE_KEY = 'sakuflow.finance.v1';
+export const MAX_IMPORT_BYTES = 1024 * 1024;
 
 export type LoadFinanceResult =
   | { status: 'empty'; snapshot: FinanceSnapshot }
@@ -20,10 +21,10 @@ export type SaveFinanceResult = { ok: true } | { ok: false; code: PersistenceErr
 
 export interface FinanceRepository {
   load(): LoadFinanceResult;
-  save(snapshot: FinanceSnapshot): SaveFinanceResult;
+  save(snapshot: unknown): SaveFinanceResult;
   clear(): void;
   exportJson(snapshot: FinanceSnapshot): string;
-  importJson(raw: string): FinanceSnapshot;
+  importJson(raw: string): PersistenceEnvelope;
 }
 
 export function createFinanceRepository(
@@ -49,16 +50,15 @@ export function createFinanceRepository(
       }
     },
     save(snapshot: FinanceSnapshot) {
-      try {
-        financeSnapshotSchema.parse(snapshot);
-      } catch {
+      const parsedSnapshot = financeSnapshotSchema.safeParse(snapshot);
+      if (!parsedSnapshot.success) {
         return { ok: false, code: 'invalid-data' };
       }
       try {
         const envelope: PersistenceEnvelope = {
           schemaVersion: CURRENT_SCHEMA_VERSION,
           savedAt: new Date().toISOString(),
-          data: snapshot,
+          data: parsedSnapshot.data,
         };
         storage.setItem(STORAGE_KEY, JSON.stringify(envelope));
         return { ok: true };
@@ -79,15 +79,16 @@ export function createFinanceRepository(
       const envelope: PersistenceEnvelope = {
         schemaVersion: CURRENT_SCHEMA_VERSION,
         savedAt: new Date().toISOString(),
-        data: snapshot,
+        data: financeSnapshotSchema.parse(snapshot),
       };
       return JSON.stringify(envelope, null, 2);
     },
     importJson(raw: string) {
+      if (new TextEncoder().encode(raw).byteLength > MAX_IMPORT_BYTES) {
+        throw new Error('File cadangan melebihi batas 1 MiB');
+      }
       const parsed = JSON.parse(raw);
-      const envelope = migrateEnvelope(parsed);
-      financeSnapshotSchema.parse(envelope.data);
-      return envelope.data;
+      return migrateEnvelope(parsed);
     },
   };
 }

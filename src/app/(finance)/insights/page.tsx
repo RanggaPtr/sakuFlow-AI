@@ -1,15 +1,15 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
-import { PlanOverview } from 'src/features/finance/components';
+import { InsightsOverview } from 'src/features/finance/components';
 
-export default function PlanPage() {
+export default function InsightsPage() {
   return (
     <Box sx={{ p: 3, maxWidth: 600, mx: 'auto' }}>
       <Typography variant="h4" sx={{ mb: 3 }}>
-        Rencana Keuangan
+        Insight Keuangan
       </Typography>
-      <PlanOverview />
+      <InsightsOverview />
     </Box>
   );
 }

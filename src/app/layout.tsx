@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     template: `%s - ${CONFIG.appName}`,
   },
   description:
-    'Venturo adalah software house di Malang dengan 130+ talenta dedicated team untuk pengembangan software, outsourcing programmer, dan konsultasi IT.',
+    'SakuFlow AI adalah asisten keuangan pribadi cerdas dan aman yang berjalan secara lokal di perangkat Anda.',
   openGraph: {
     type: 'website',
     siteName: CONFIG.appName,

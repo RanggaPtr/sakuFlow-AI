@@ -1,65 +1,48 @@
 'use client';
 
-import type { FinanceSnapshot } from 'src/features/finance/domain';
-
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+
+import { paths } from 'src/routes/paths';
 
 import { useFinance } from 'src/features/finance/state';
+import { toLocalYyyyMmDd, buildOnboardingSnapshot } from 'src/features/finance/domain';
+
+function tomorrowLocal(): string {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return toLocalYyyyMmDd(tomorrow);
+}
 
 export function OnboardingWizard() {
-  const { state, dispatch } = useFinance();
+  const { dispatch } = useFinance();
   const router = useRouter();
+  const [currentBalance, setCurrentBalance] = useState('');
+  const [recurringIncome, setRecurringIncome] = useState('');
+  const [nextPayday, setNextPayday] = useState('');
+  const [fixedBuffer, setFixedBuffer] = useState('');
+  const [error, setError] = useState('');
 
-  const [baseSalary, setBaseSalary] = useState('');
-  const [baseSavings, setBaseSavings] = useState('');
-  const [cycleType, setCycleType] = useState('monthly');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const salary = parseInt(baseSalary.replace(/\D/g, ''), 10) || 0;
-    const savings = parseInt(baseSavings.replace(/\D/g, ''), 10) || 0;
-
-    const todayIso = new Date().toISOString();
-    const todayYmd = todayIso.substring(0, 10);
-
-    const newSnapshot: FinanceSnapshot = {
-      ...state.snapshot,
-      profile: {
-        id: crypto.randomUUID(),
-        incomeDay: 25,
-        currency: 'IDR' as const,
-        onboardingCompletedAt: todayIso,
-      },
-      cycle: {
-        id: crypto.randomUUID(),
-        startsOn: todayYmd,
-        nextIncomeOn: todayYmd,
-        openingBalance: savings,
-        bufferAmount: salary * 0.1, // 10% defaults
-      },
-    };
-
-    dispatch({
-      type: 'complete-onboarding',
-      snapshot: newSnapshot,
-    });
-    router.replace('/dashboard');
-  };
-
-  const handleCycleChange = (event: React.MouseEvent<HTMLElement>, newCycle: string | null) => {
-    if (newCycle !== null) {
-      setCycleType(newCycle);
+  const handleConfirm = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      const snapshot = buildOnboardingSnapshot(
+        { currentBalance, recurringIncome, nextPayday, fixedBuffer },
+        new Date(),
+        () => crypto.randomUUID()
+      );
+      dispatch({ type: 'complete-onboarding', snapshot });
+      router.replace(paths.dashboard);
+    } catch {
+      setError('Periksa kembali nominal Rupiah bulat dan tanggal gajian berikutnya.');
     }
   };
 
@@ -75,54 +58,60 @@ export function OnboardingWizard() {
     >
       <Card sx={{ p: 4, maxWidth: 480, width: '100%' }}>
         <Typography variant="h4" sx={{ mb: 1 }}>
-          Selamat Datang!
+          Mulai SakuFlow
         </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
-          Mari atur profil keuangan dasarmu agar SakuFlow bisa menghitung anggaran dengan akurat.
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
+          Data baru dibuat hanya setelah kamu mengonfirmasi formulir ini. Pemasukan rutin tidak
+          dihitung sebagai saldo saat ini.
         </Typography>
-
-        <form onSubmit={handleSubmit}>
-          <Stack spacing={3}>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <Box component="form" onSubmit={handleConfirm}>
+          <Stack spacing={2.5}>
             <TextField
-              fullWidth
-              label="Gaji/Pemasukan Rutin (Rp)"
-              type="number"
-              value={baseSalary}
-              onChange={(e) => setBaseSalary(e.target.value)}
               required
+              fullWidth
+              type="number"
+              label="Saldo saat ini (Rp)"
+              value={currentBalance}
+              onChange={(event) => setCurrentBalance(event.target.value)}
+              slotProps={{ htmlInput: { min: 0, step: 1 } }}
             />
-
             <TextField
-              fullWidth
-              label="Total Tabungan Saat Ini (Rp)"
-              type="number"
-              value={baseSavings}
-              onChange={(e) => setBaseSavings(e.target.value)}
               required
+              fullWidth
+              type="number"
+              label="Pemasukan rutin (Rp)"
+              value={recurringIncome}
+              onChange={(event) => setRecurringIncome(event.target.value)}
+              slotProps={{ htmlInput: { min: 1, step: 1 } }}
             />
-
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Siklus Pengelolaan
-              </Typography>
-              <ToggleButtonGroup
-                color="primary"
-                value={cycleType}
-                exclusive
-                onChange={handleCycleChange}
-                fullWidth
-              >
-                <ToggleButton value="monthly">Bulanan</ToggleButton>
-                <ToggleButton value="payday">Gajian</ToggleButton>
-                <ToggleButton value="manual">Manual</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-
+            <TextField
+              required
+              fullWidth
+              type="date"
+              label="Tanggal gajian berikutnya"
+              value={nextPayday}
+              onChange={(event) => setNextPayday(event.target.value)}
+              slotProps={{ htmlInput: { min: tomorrowLocal() }, inputLabel: { shrink: true } }}
+            />
+            <TextField
+              required
+              fullWidth
+              type="number"
+              label="Dana jaga-jaga tetap (Rp)"
+              value={fixedBuffer}
+              onChange={(event) => setFixedBuffer(event.target.value)}
+              slotProps={{ htmlInput: { min: 0, step: 1 } }}
+            />
             <Button type="submit" variant="contained" size="large" fullWidth>
-              Mulai SakuFlow
+              Konfirmasi & mulai
             </Button>
           </Stack>
-        </form>
+        </Box>
       </Card>
     </Box>
   );

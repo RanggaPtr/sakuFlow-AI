@@ -15,6 +15,8 @@ const positiveMoneySchema = z.number().int().positive().max(Number.MAX_SAFE_INTE
 const uuidSchema = z.string().uuid();
 const isoDateSchema = z.string().refine(isIsoDate, { message: 'Invalid ISO Date' });
 const yyyyMmDdSchema = z.string().refine(isYyyyMmDd, { message: 'Must be YYYY-MM-DD' });
+export const transactionTypeSchema = z.enum(TRANSACTION_TYPES);
+export const transactionCategorySchema = z.enum(TRANSACTION_CATEGORIES);
 
 export const financeProfileSchema = z.object({
   id: uuidSchema,
@@ -33,15 +35,15 @@ export const budgetCycleSchema = z
     openingBalance: moneySchema,
     bufferAmount: moneySchema,
   })
-  .refine((data) => data.nextIncomeOn >= data.startsOn, {
-    message: 'nextIncomeOn must be >= startsOn',
+  .refine((data) => data.nextIncomeOn > data.startsOn, {
+    message: 'nextIncomeOn must be after startsOn',
   });
 export type BudgetCycle = z.infer<typeof budgetCycleSchema>;
 
 export const transactionSchema = z.object({
   id: uuidSchema,
-  type: z.enum(TRANSACTION_TYPES),
-  category: z.enum(TRANSACTION_CATEGORIES),
+  type: transactionTypeSchema,
+  category: transactionCategorySchema,
   amount: positiveMoneySchema,
   occurredOn: yyyyMmDdSchema,
   note: z.string().trim().min(1).max(120),

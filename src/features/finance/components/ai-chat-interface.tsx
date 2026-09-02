@@ -15,6 +15,7 @@ import Typography from '@mui/material/Typography';
 
 import { useFinance } from 'src/features/finance/state';
 import { interpretTransactionText } from 'src/features/finance/ai';
+import { transactionTypeSchema } from 'src/features/finance/domain';
 
 interface Message {
   id: string;
@@ -70,9 +71,7 @@ export function AiChatInterface() {
           createdAt: new Date().toISOString(),
         };
 
-        if (intent.category && intent.category !== 'other') {
-          transaction.category = intent.category as any;
-        }
+        transaction.category = intent.category;
 
         setDraft(transaction);
         setMessages((prev) => [
@@ -194,7 +193,9 @@ export function AiChatInterface() {
             <Select
               size="small"
               value={draft.type}
-              onChange={(e) => setDraft({ ...draft, type: e.target.value as any })}
+              onChange={(e) =>
+                setDraft({ ...draft, type: transactionTypeSchema.parse(e.target.value) })
+              }
               sx={{ flex: 1 }}
             >
               <MenuItem value="expense">Pengeluaran</MenuItem>

@@ -1,62 +1,41 @@
-import type { FinanceIntent } from 'src/features/finance/ai/interpreter';
-
 import { NextResponse } from 'next/server';
 
-// Note: In Next.js App Router, we can't easily reuse the exact interpretTransactionText
-// if it's strictly a client/server agnostic function, but since it's just a function,
-// we can move the actual fetch to the server.
-// Actually, let's implement the Gemini call directly here so we can use process.env.GEMINI_API_KEY.
-import { SYSTEM_PROMPT } from 'src/features/finance/ai/prompt';
+import { CONFIG } from 'src/global-config';
 import { fallbackInterpretation } from 'src/features/finance/ai/fallback';
+import { financeTextRequestSchema } from 'src/features/finance/ai/schema';
+import { requestOpenAiCompatibleIntent } from 'src/features/finance/ai/provider';
 
 export async function POST(request: Request) {
+  let payload: unknown;
   try {
-    const { text } = await request.json();
-
-    if (!text || typeof text !== 'string' || text.trim() === '') {
-      return NextResponse.json({ type: 'unknown', reason: 'Empty input' });
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return NextResponse.json(fallbackInterpretation(text));
-    }
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents: [{ parts: [{ text }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.1,
-          },
-        }),
-      }
+    payload = await request.json();
+  } catch {
+    return NextResponse.json(
+      { type: 'unknown', reason: 'Input must be 1..500 characters' },
+      { status: 400 }
     );
+  }
 
-    if (!response.ok) {
-      return NextResponse.json(fallbackInterpretation(text));
-    }
+  const input = financeTextRequestSchema.safeParse(payload);
+  if (!input.success) {
+    return NextResponse.json(
+      { type: 'unknown', reason: 'Input must be 1..500 characters' },
+      { status: 400 }
+    );
+  }
 
-    const data = await response.json();
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const localFallback = fallbackInterpretation(input.data.text);
+  if (!CONFIG.aiApiUrl) return NextResponse.json(localFallback);
 
-    if (!resultText) {
-      return NextResponse.json(fallbackInterpretation(text));
-    }
-
-    const parsed = JSON.parse(resultText);
-    if (parsed.type === 'expense' || parsed.type === 'income' || parsed.type === 'unknown') {
-      return NextResponse.json(parsed as FinanceIntent);
-    }
-
-    return NextResponse.json(fallbackInterpretation(text));
-  } catch (error) {
-    return NextResponse.json({ type: 'unknown', reason: 'Server error' });
+  try {
+    const intent = await requestOpenAiCompatibleIntent(input.data.text, {
+      apiUrl: CONFIG.aiApiUrl,
+      apiKey: CONFIG.aiApiKey,
+      model: CONFIG.aiModel,
+      timeoutMs: CONFIG.aiTimeoutMs,
+    });
+    return NextResponse.json(intent);
+  } catch {
+    return NextResponse.json(localFallback);
   }
 }

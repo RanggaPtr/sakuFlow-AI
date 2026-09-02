@@ -1,4 +1,6 @@
-import type { FinanceIntent } from './interpreter';
+import type { FinanceIntent } from './schema';
+
+import { financeIntentSchema } from './schema';
 
 export function fallbackInterpretation(text: string): FinanceIntent {
   const lower = text.toLowerCase();
@@ -16,17 +18,17 @@ export function fallbackInterpretation(text: string): FinanceIntent {
     amount = parseInt(numMatch[1].replace(/\./g, ''), 10);
   }
 
-  if (amount === 0 || Number.isNaN(amount)) {
+  if (!Number.isSafeInteger(amount) || amount <= 0) {
     return { type: 'unknown', reason: 'Could not extract amount' };
   }
 
   const isIncome = lower.includes('gaji') || lower.includes('dapat') || lower.includes('bonus');
   const type = isIncome ? 'income' : 'expense';
 
-  return {
+  return financeIntentSchema.parse({
     type,
     amount,
     category: 'other',
     note: text.substring(0, 50).trim(),
-  };
+  });
 }

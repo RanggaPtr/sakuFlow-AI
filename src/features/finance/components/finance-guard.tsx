@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { paths } from 'src/routes/paths';
+
 import { useFinance, selectIsOnboarded } from 'src/features/finance/state';
+
+import { RecoveryView } from './recovery-view';
 
 export function FinanceGuard({ children }: { children: React.ReactNode }) {
   const { state } = useFinance();
@@ -16,7 +20,7 @@ export function FinanceGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (state.hydration === 'ready' && !selectIsOnboarded(state)) {
-      router.replace('/onboarding');
+      router.replace(paths.onboarding);
     }
   }, [state, router]);
 
@@ -25,12 +29,7 @@ export function FinanceGuard({ children }: { children: React.ReactNode }) {
   }
 
   if (state.hydration === 'corrupt') {
-    return (
-      <div style={{ padding: 24, textAlign: 'center' }}>
-        <h2>Data Terkorupsi</h2>
-        <p>Maaf, data penyimpanan lokal tidak dapat dibaca.</p>
-      </div>
-    );
+    return <RecoveryView />;
   }
 
   if (state.hydration === 'ready' && !selectIsOnboarded(state)) {
