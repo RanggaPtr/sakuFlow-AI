@@ -33,6 +33,11 @@ import {
 } from 'src/features/finance/domain';
 
 type DialogMode = 'obligation' | 'goal' | null;
+interface ContributionDraft {
+  id: string;
+  goalName: string;
+  maxAmount: number;
+}
 
 export function PlanOverview() {
   const { state, dispatch } = useFinance();
@@ -46,6 +51,10 @@ export function PlanOverview() {
   const [bufferAmount, setBufferAmount] = useState(() =>
     String(state.snapshot.allocation.bufferAmount)
   );
+  const [contributionDraft, setContributionDraft] = useState<ContributionDraft | null>(null);
+  const [contributionAmount, setContributionAmount] = useState('');
+  const [contributionConfirmation, setContributionConfirmation] = useState<number | null>(null);
+  const [contributionError, setContributionError] = useState('');
 
   const formatRp = (n: number) =>
     new Intl.NumberFormat('id-ID', {
@@ -79,31 +88,44 @@ export function PlanOverview() {
   };
 
   const handleContribute = (id: string, goalName: string, maxAmount: number) => {
-    const input = window.prompt(
-      `Masukkan nominal tabungan untuk ${goalName} (Maks ${formatRp(maxAmount)}):`
-    );
-    if (!input) return;
-    const contributionAmount = parseStrictIntegerMoney(input);
-    if (contributionAmount === null || contributionAmount <= 0 || contributionAmount > maxAmount) {
-      alert('Nominal tidak valid atau melebihi target.');
+    setContributionDraft({ id, goalName, maxAmount });
+    setContributionAmount('');
+    setContributionConfirmation(null);
+    setContributionError('');
+  };
+
+  const handleReviewContribution = () => {
+    if (!contributionDraft) return;
+    const parsed = parseStrictIntegerMoney(contributionAmount);
+    if (parsed === null || parsed <= 0 || parsed > contributionDraft.maxAmount) {
+      setContributionError(
+        `Nominal harus Rupiah bulat antara Rp1 dan ${formatRp(contributionDraft.maxAmount)}.`
+      );
       return;
     }
+    setContributionConfirmation(parsed);
+    setContributionError('');
+  };
 
+  const handleConfirmContribution = () => {
+    if (!contributionDraft || contributionConfirmation === null) return;
     dispatch({
       type: 'contribute-to-goal',
-      goalId: id,
-      amount: contributionAmount,
+      goalId: contributionDraft.id,
+      amount: contributionConfirmation,
       transaction: {
         id: crypto.randomUUID(),
         type: 'expense',
         category: 'savings',
-        amount: contributionAmount,
+        amount: contributionConfirmation,
         occurredOn: toLocalYyyyMmDd(new Date()),
-        note: `Nabung untuk ${goalName}`,
+        note: `Nabung untuk ${contributionDraft.goalName}`,
         source: 'manual',
         createdAt: new Date().toISOString(),
       },
     });
+    setContributionDraft(null);
+    setContributionConfirmation(null);
   };
 
   const openCreateDialog = (mode: Exclude<DialogMode, null>) => {
@@ -314,6 +336,50 @@ export function PlanOverview() {
           </List>
         )}
       </Card>
+
+      <Dialog
+        open={contributionDraft !== null}
+        onClose={() => setContributionDraft(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>
+          {contributionConfirmation === null ? 'Nabung untuk tujuan' : 'Konfirmasi tabungan'}
+        </DialogTitle>
+        <DialogContent>
+          {contributionDraft && contributionConfirmation === null ? (
+            <Box sx={{ pt: 1 }}>
+              <TextField
+                fullWidth
+                autoFocus
+                type="number"
+                label="Nominal tabungan"
+                value={contributionAmount}
+                onChange={(event) => setContributionAmount(event.target.value)}
+                slotProps={{ htmlInput: { min: 1, step: 1 } }}
+              />
+              {contributionError && <Typography color="error">{contributionError}</Typography>}
+            </Box>
+          ) : (
+            <Typography>
+              Catat tabungan {formatRp(contributionConfirmation ?? 0)} untuk{' '}
+              {contributionDraft?.goalName}?
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setContributionDraft(null)}>Batal</Button>
+          {contributionConfirmation === null ? (
+            <Button variant="contained" onClick={handleReviewContribution}>
+              Lanjutkan
+            </Button>
+          ) : (
+            <Button variant="contained" onClick={handleConfirmContribution}>
+              Konfirmasi nabung
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={dialogMode !== null} onClose={closeCreateDialog} fullWidth maxWidth="xs">
         <DialogTitle>

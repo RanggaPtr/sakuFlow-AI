@@ -6,7 +6,7 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
 import { toLocalYyyyMmDd } from 'src/features/finance/domain';
-import { useFinance, selectProjection } from 'src/features/finance/state';
+import { useFinance, selectProjection, selectRecentTransactions } from 'src/features/finance/state';
 import {
   DashboardBudget,
   AiChatInterface,
@@ -32,7 +32,7 @@ export default function DashboardPage() {
           health={projection.health}
           reasonCodes={projection.reasonCodes}
           nextIncomeOn={projection.nextIncomeOn}
-          recurringIncome={projection.recurringIncome}
+          projectedRecurringIncome={projection.projectedRecurringIncome}
         />
         <DashboardBudget
           liquidBalance={projection.liquidBalance}
@@ -58,19 +58,16 @@ export default function DashboardPage() {
               Belum ada transaksi.
             </Typography>
           ) : (
-            [...state.snapshot.transactions]
-              .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-              .slice(0, 5)
-              .map((transaction) => (
-                <Typography key={transaction.id} variant="body2">
-                  {transaction.note} · {transaction.type === 'expense' ? '-' : '+'}
-                  {new Intl.NumberFormat('id-ID', {
-                    style: 'currency',
-                    currency: 'IDR',
-                    maximumFractionDigits: 0,
-                  }).format(transaction.amount)}
-                </Typography>
-              ))
+            selectRecentTransactions(state, 5).map((transaction) => (
+              <Typography key={transaction.id} variant="body2">
+                {transaction.note} · {transaction.type === 'expense' ? '-' : '+'}
+                {new Intl.NumberFormat('id-ID', {
+                  style: 'currency',
+                  currency: 'IDR',
+                  maximumFractionDigits: 0,
+                }).format(transaction.amount)}
+              </Typography>
+            ))
           )}
         </Box>
       </Stack>

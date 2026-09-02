@@ -7,7 +7,7 @@ interface Props {
   health: 'safe' | 'watch' | 'risk';
   reasonCodes: string[];
   nextIncomeOn: string | null;
-  recurringIncome: number;
+  projectedRecurringIncome: number;
 }
 
 const healthCopy = {
@@ -37,7 +37,7 @@ export function DashboardOverview({
   health,
   reasonCodes,
   nextIncomeOn,
-  recurringIncome,
+  projectedRecurringIncome,
 }: Props) {
   const formattedAmount = new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -71,8 +71,9 @@ export function DashboardOverview({
         {reasonCopy[reasonCodes[0] ?? ''] ?? 'Pantau pengeluaran agar rencana tetap terjaga.'}
       </Typography>
       <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.9 }}>
-        Pemasukan berikutnya: {formatDate(nextIncomeOn)} · Rp
-        {new Intl.NumberFormat('id-ID').format(recurringIncome)}
+        {projectedRecurringIncome > 0
+          ? `Perkiraan pemasukan mendatang (belum masuk): ${formatDate(nextIncomeOn)} · Rp${new Intl.NumberFormat('id-ID').format(projectedRecurringIncome)}`
+          : `Belum ada pemasukan mendatang yang diproyeksikan (tanggal berikutnya: ${formatDate(nextIncomeOn)}).`}
       </Typography>
     </Card>
   );

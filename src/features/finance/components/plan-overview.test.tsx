@@ -74,4 +74,57 @@ describe('PlanOverview creation flow', () => {
 
     expect(dispatch).toHaveBeenCalledWith({ type: 'update-allocation', bufferAmount: 750000 });
   });
+
+  it('cancels goal contribution without mutating', async () => {
+    const user = userEvent.setup();
+    vi.mocked(useFinance).mockReturnValue({
+      state: {
+        hydration: 'ready',
+        snapshot: makeFinanceSnapshot({ obligations: [] }),
+        corruptRawValue: null,
+      },
+      dispatch,
+      persistence: {
+        reset: vi.fn(),
+        exportJson: vi.fn(() => ''),
+        parseImport: vi.fn(),
+        confirmImport: vi.fn(),
+      },
+    });
+    render(<PlanOverview />);
+
+    await user.click(screen.getByRole('button', { name: 'Nabung' }));
+    await user.click(screen.getByRole('button', { name: 'Batal' }));
+
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(screen.queryByText('Konfirmasi tabungan')).not.toBeInTheDocument();
+  });
+
+  it('validates and confirms a goal contribution exactly once', async () => {
+    const user = userEvent.setup();
+    vi.mocked(useFinance).mockReturnValue({
+      state: {
+        hydration: 'ready',
+        snapshot: makeFinanceSnapshot({ obligations: [] }),
+        corruptRawValue: null,
+      },
+      dispatch,
+      persistence: {
+        reset: vi.fn(),
+        exportJson: vi.fn(() => ''),
+        parseImport: vi.fn(),
+        confirmImport: vi.fn(),
+      },
+    });
+    render(<PlanOverview />);
+
+    await user.click(screen.getByRole('button', { name: 'Nabung' }));
+    await user.type(screen.getByRole('spinbutton', { name: 'Nominal tabungan' }), '200000');
+    await user.click(screen.getByRole('button', { name: 'Lanjutkan' }));
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(screen.getByText('Konfirmasi tabungan')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Konfirmasi nabung' }));
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'contribute-to-goal' }));
+  });
 });

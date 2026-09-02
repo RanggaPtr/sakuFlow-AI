@@ -17,6 +17,7 @@ import IconButton from '@mui/material/IconButton';
 import ListItemText from '@mui/material/ListItemText';
 
 import { useFinance } from 'src/features/finance/state';
+import { compareTransactionsByDateDesc } from 'src/features/finance/domain';
 
 import { TransactionDialog } from './transaction-dialog';
 
@@ -33,11 +34,7 @@ export function TransactionList() {
       const haystack = `${transaction.note} ${transaction.category}`.toLowerCase();
       return haystack.includes(query.trim().toLowerCase());
     })
-    .sort((a, b) => {
-      const diff = b.occurredOn.localeCompare(a.occurredOn);
-      if (diff !== 0) return diff;
-      return b.createdAt.localeCompare(a.createdAt);
-    });
+    .sort(compareTransactionsByDateDesc);
 
   const formatRp = (n: number) =>
     new Intl.NumberFormat('id-ID', {

@@ -1,6 +1,13 @@
 import { it, expect, describe } from 'vitest';
 
-import { isIsoDate, isYyyyMmDd, clampIncomeDay, daysUntilIncome, toLocalYyyyMmDd } from './date';
+import {
+  isIsoDate,
+  isYyyyMmDd,
+  clampIncomeDay,
+  daysUntilIncome,
+  toLocalYyyyMmDd,
+  compareTransactionsByDateDesc,
+} from './date';
 
 describe('date domain functions', () => {
   it('validates ISO dates correctly', () => {
@@ -34,5 +41,16 @@ describe('date domain functions', () => {
 
   it('formats date-only values from local calendar fields', () => {
     expect(toLocalYyyyMmDd(new Date(2026, 7, 9, 23, 59, 59))).toBe('2026-08-09');
+  });
+
+  it('sorts transactions by occurred date, then creation time', () => {
+    const older = { occurredOn: '2026-08-09', createdAt: '2026-08-09T12:00:00Z' };
+    const newer = { occurredOn: '2026-08-10', createdAt: '2026-08-01T12:00:00Z' };
+    const sameDayLater = { occurredOn: '2026-08-10', createdAt: '2026-08-10T12:00:00Z' };
+    expect([older, newer, sameDayLater].sort(compareTransactionsByDateDesc)).toEqual([
+      sameDayLater,
+      newer,
+      older,
+    ]);
   });
 });

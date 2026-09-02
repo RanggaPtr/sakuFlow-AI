@@ -109,26 +109,26 @@ describe('projectBudget', () => {
     expect(result.liquidBalance).toBe(4000000);
   });
 
-  it('calendar-accounts the next recurring income only on its due date', () => {
+  it('forecasts recurring income only while the next income date is still future', () => {
     const before = projectBudget(makeFinanceSnapshot(), '2026-08-10');
     const due = projectBudget(makeFinanceSnapshot(), '2026-08-11');
 
-    expect(before.projectedRecurringIncome).toBe(0);
-    expect(before.projectedLiquidBalance).toBe(before.liquidBalance);
-    expect(due.projectedRecurringIncome).toBe(6000000);
-    expect(due.projectedLiquidBalance).toBe(due.liquidBalance + 6000000);
+    expect(before.projectedRecurringIncome).toBe(6000000);
+    expect(before.projectedLiquidBalance).toBe(before.liquidBalance + 6000000);
+    expect(due.projectedRecurringIncome).toBe(0);
+    expect(due.projectedLiquidBalance).toBe(due.liquidBalance);
     expect(due.liquidBalance).toBe(4000000);
     expect(due.nextIncomeOn).toBe('2026-08-11');
   });
 
-  it('does not forecast recurring income twice when it was recorded on the due date', () => {
+  it('does not infer recurring income from an unrelated income transaction', () => {
     const snapshot = makeFinanceSnapshot({
       transactions: [
         {
           id: '66666666-6666-4666-8666-666666666666',
           type: 'income',
           category: 'salary',
-          amount: 6000000,
+          amount: 250000,
           occurredOn: '2026-08-11',
           note: 'Gaji masuk',
           source: 'manual',
@@ -138,9 +138,9 @@ describe('projectBudget', () => {
     });
     const result = projectBudget(snapshot, '2026-08-11');
 
-    expect(result.recordedIncome).toBe(10000000);
+    expect(result.recordedIncome).toBe(4250000);
     expect(result.projectedRecurringIncome).toBe(0);
-    expect(result.projectedLiquidBalance).toBe(10000000);
+    expect(result.projectedLiquidBalance).toBe(4250000);
   });
 
   it('uses divisor 1 and adds cycle-stale reason after next income date', () => {

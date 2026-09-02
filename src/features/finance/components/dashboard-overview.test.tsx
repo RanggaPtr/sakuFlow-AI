@@ -12,13 +12,15 @@ describe('DashboardOverview', () => {
         health="watch"
         reasonCodes={['daily-limit-low']}
         nextIncomeOn="2026-08-11"
-        recurringIncome={6000000}
+        projectedRecurringIncome={6000000}
       />
     );
 
     expect(screen.getByText(/Perlu perhatian/i)).toBeInTheDocument();
     expect(screen.getByText(/Batas harian cukup rendah/i)).toBeInTheDocument();
-    expect(screen.getByText((text) => text.includes('Pemasukan berikutnya:'))).toBeInTheDocument();
+    expect(
+      screen.getByText((text) => text.includes('Perkiraan pemasukan mendatang'))
+    ).toBeInTheDocument();
     expect(screen.getByText(/Rp6.000.000/i)).toBeInTheDocument();
   });
 });

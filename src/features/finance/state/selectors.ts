@@ -2,6 +2,7 @@ import type { FinanceState } from './finance-reducer';
 import type { FinanceProjection } from 'src/features/finance/engine';
 
 import { projectBudget } from 'src/features/finance/engine';
+import { compareTransactionsByDateDesc } from 'src/features/finance/domain';
 
 export function selectIsOnboarded(state: FinanceState): boolean {
   return state.snapshot.profile !== null && state.snapshot.cycle !== null;
@@ -13,13 +14,7 @@ export function selectProjection(state: FinanceState, today: string): FinancePro
 }
 
 export function selectRecentTransactions(state: FinanceState, limit: number) {
-  return [...state.snapshot.transactions]
-    .sort((a, b) => {
-      const diff = b.occurredOn.localeCompare(a.occurredOn);
-      if (diff !== 0) return diff;
-      return b.createdAt.localeCompare(a.createdAt);
-    })
-    .slice(0, limit);
+  return [...state.snapshot.transactions].sort(compareTransactionsByDateDesc).slice(0, limit);
 }
 
 export function selectUnpaidObligations(state: FinanceState) {

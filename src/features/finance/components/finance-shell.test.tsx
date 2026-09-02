@@ -27,10 +27,13 @@ describe('FinanceShell', () => {
       </FinanceShell>
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Dasbor' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Transaksi' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Rencana' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Wawasan' }));
+    expect(screen.getByRole('navigation', { name: 'Navigasi utama' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Beranda' }).length).toBe(1);
+    expect(screen.getByRole('button', { name: 'Beranda' })).toHaveAttribute('aria-current', 'page');
+    await userEvent.click(screen.getByRole('button', { name: 'Beranda' }));
+    await userEvent.click(screen.getAllByRole('button', { name: 'Transaksi' })[0]!);
+    await userEvent.click(screen.getAllByRole('button', { name: 'Rencana' })[0]!);
+    await userEvent.click(screen.getByRole('button', { name: 'Insight' }));
     await userEvent.click(screen.getByRole('button', { name: 'Pengaturan' }));
     expect(push.mock.calls).toEqual([
       [paths.dashboard],

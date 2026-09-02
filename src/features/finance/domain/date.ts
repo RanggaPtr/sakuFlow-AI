@@ -20,6 +20,14 @@ export function toLocalYyyyMmDd(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export function compareTransactionsByDateDesc(
+  a: { occurredOn: string; createdAt: string },
+  b: { occurredOn: string; createdAt: string }
+) {
+  const dateDiff = b.occurredOn.localeCompare(a.occurredOn);
+  return dateDiff !== 0 ? dateDiff : b.createdAt.localeCompare(a.createdAt);
+}
+
 export function daysUntilIncome(todayStr: string, nextIncomeOnStr: string): number {
   const today = parseYyyyMmDd(todayStr);
   const nextIncomeOn = parseYyyyMmDd(nextIncomeOnStr);

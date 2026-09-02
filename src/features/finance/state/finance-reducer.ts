@@ -83,6 +83,12 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
         createdAt: current.createdAt,
       });
       if (!candidate.success) return state;
+      if (
+        state.snapshot.goals.some((goal) => goal.contributedAmount > 0) &&
+        (current.category === 'savings' || candidate.data.category === 'savings')
+      ) {
+        return state;
+      }
       return {
         ...state,
         snapshot: {

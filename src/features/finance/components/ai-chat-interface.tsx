@@ -22,6 +22,7 @@ import {
   buildGoal,
   buildObligation,
   toLocalYyyyMmDd,
+  transactionSchema,
   transactionTypeSchema,
   obligationCategoryToTransactionCategory,
 } from 'src/features/finance/domain';
@@ -35,7 +36,17 @@ interface Message {
 interface IntentSimulation {
   amount: number;
   note: string;
+  today: string;
   result: PurchaseSimulationResult;
+}
+
+function simulationMaterial(result: PurchaseSimulationResult) {
+  return [
+    result.verdict,
+    result.after.safePool,
+    result.after.safeToSpendPerDay,
+    result.after.liquidBalance,
+  ].join(':');
 }
 
 export function AiChatInterface() {
@@ -50,6 +61,7 @@ export function AiChatInterface() {
   ]);
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState<Transaction | null>(null);
+  const [draftError, setDraftError] = useState('');
   const [intentDraft, setIntentDraft] = useState<FinanceIntent | null>(null);
   const [intentSimulation, setIntentSimulation] = useState<IntentSimulation | null>(null);
 
@@ -91,6 +103,7 @@ export function AiChatInterface() {
         transaction.category = intent.category;
 
         setDraft(transaction);
+        setDraftError('');
         setMessages((prev) => [
           ...prev,
           {
@@ -133,7 +146,12 @@ export function AiChatInterface() {
 
   const handleConfirmDraft = () => {
     if (!draft) return;
-    dispatch({ type: 'add-transaction', transaction: draft });
+    const parsed = transactionSchema.safeParse(draft);
+    if (!parsed.success) {
+      setDraftError('Periksa nominal, tanggal, dan catatan sebelum menyimpan.');
+      return;
+    }
+    dispatch({ type: 'add-transaction', transaction: parsed.data });
 
     setMessages((prev) => [
       ...prev,
@@ -144,10 +162,12 @@ export function AiChatInterface() {
       },
     ]);
     setDraft(null);
+    setDraftError('');
   };
 
   const handleCancelDraft = () => {
     setDraft(null);
+    setDraftError('');
     setMessages((prev) => [
       ...prev,
       {
@@ -161,6 +181,24 @@ export function AiChatInterface() {
   const handleRecordSimulation = () => {
     if (!intentSimulation) return;
     const now = new Date();
+    const today = toLocalYyyyMmDd(now);
+    const latestResult = simulatePurchase({
+      snapshot: state.snapshot,
+      today,
+      amount: intentSimulation.amount,
+    });
+    if (simulationMaterial(latestResult) !== simulationMaterial(intentSimulation.result)) {
+      setIntentSimulation({ ...intentSimulation, today, result: latestResult });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          sender: 'ai',
+          text: 'Data keuangan berubah sejak simulasi. Hasil diperbarui; periksa dan konfirmasi lagi sebelum mencatat.',
+        },
+      ]);
+      return;
+    }
     dispatch({
       type: 'add-transaction',
       transaction: {
@@ -168,7 +206,7 @@ export function AiChatInterface() {
         type: 'expense',
         category: 'other',
         amount: intentSimulation.amount,
-        occurredOn: toLocalYyyyMmDd(now),
+        occurredOn: today,
         note: intentSimulation.note,
         source: 'manual',
         createdAt: now.toISOString(),
@@ -219,6 +257,7 @@ export function AiChatInterface() {
         setIntentSimulation({
           amount: intentDraft.amount,
           note: intentDraft.note,
+          today: toLocalYyyyMmDd(now),
           result: simulatePurchase({
             snapshot: state.snapshot,
             today: toLocalYyyyMmDd(now),
@@ -364,6 +403,7 @@ export function AiChatInterface() {
           }}
         >
           <Typography variant="subtitle2">Konfirmasi Draft</Typography>
+          {draftError && <Typography color="error">{draftError}</Typography>}
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Select
               size="small"
@@ -379,8 +419,14 @@ export function AiChatInterface() {
             <TextField
               size="small"
               type="number"
-              value={draft.amount || ''}
-              onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) })}
+              label="Nominal"
+              value={Number.isFinite(draft.amount) ? draft.amount : ''}
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  amount: (e.currentTarget as HTMLInputElement).valueAsNumber,
+                })
+              }
               sx={{ flex: 2 }}
             />
           </Box>
@@ -389,6 +435,14 @@ export function AiChatInterface() {
             value={draft.note}
             onChange={(e) => setDraft({ ...draft, note: e.target.value })}
             placeholder="Catatan..."
+          />
+          <TextField
+            size="small"
+            type="date"
+            label="Tanggal"
+            value={draft.occurredOn}
+            onChange={(e) => setDraft({ ...draft, occurredOn: e.target.value })}
+            slotProps={{ inputLabel: { shrink: true } }}
           />
           <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
             <Button variant="outlined" color="inherit" fullWidth onClick={handleCancelDraft}>

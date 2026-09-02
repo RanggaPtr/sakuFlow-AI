@@ -195,4 +195,33 @@ describe('financeReducer', () => {
       { ...original, amount: 300000, note: 'Makan baru' },
     ]);
   });
+
+  it('rejects editing savings transactions while goal contributions exist', () => {
+    const savings = {
+      id: '99999999-9999-4999-8999-999999999999',
+      type: 'expense' as const,
+      amount: 200000,
+      category: 'savings' as const,
+      createdAt: '2026-08-01T00:00:00Z',
+      note: 'Savings',
+      occurredOn: '2026-08-01',
+      source: 'manual' as const,
+    };
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: makeFinanceSnapshot({
+        transactions: [savings],
+        goals: [{ ...makeFinanceSnapshot().goals[0]!, contributedAmount: 200000 }],
+      }),
+      corruptRawValue: null,
+    };
+
+    expect(
+      financeReducer(state, {
+        type: 'update-transaction',
+        transactionId: savings.id,
+        transaction: { ...savings, note: 'Edited savings' },
+      })
+    ).toBe(state);
+  });
 });

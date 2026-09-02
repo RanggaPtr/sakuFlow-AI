@@ -62,11 +62,10 @@ export function projectBudget(snapshot: FinanceSnapshot, today: string): Finance
 
   const recordedIncome = cycle.openingBalance + incomeTransactions;
   const liquidBalance = recordedIncome - spent;
-  const recurringIncomeRecorded = transactions.some(
-    (transaction) => transaction.type === 'income' && transaction.occurredOn === cycle.nextIncomeOn
-  );
-  const projectedRecurringIncome =
-    today >= cycle.nextIncomeOn && !recurringIncomeRecorded ? cycle.recurringIncome : 0;
+  // This is a future forecast only. A normal income transaction is never
+  // treated as proof that recurring income arrived, and stale cycles do not
+  // retroactively add money to the current balance.
+  const projectedRecurringIncome = today < cycle.nextIncomeOn ? cycle.recurringIncome : 0;
   const projectedLiquidBalance = liquidBalance + projectedRecurringIncome;
 
   const unpaidObligations = obligations.filter((o) => o.status === 'unpaid');

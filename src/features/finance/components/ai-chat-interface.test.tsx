@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { vi, it, expect, describe, afterEach, beforeEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
 
 import { useFinance } from 'src/features/finance/state';
 import { interpretTransactionText } from 'src/features/finance/ai';
@@ -262,6 +262,73 @@ describe('AiChatInterface Draft Flow', () => {
     expect(dispatchMock).not.toHaveBeenCalled();
     expect(screen.getByText(/tidak ditemukan atau sudah lunas/i)).toBeInTheDocument();
     expect(screen.queryByText('Tindakan dikonfirmasi.')).not.toBeInTheDocument();
+  });
+
+  it('re-runs a simulation and requires fresh confirmation after snapshot changes', async () => {
+    vi.mocked(interpretTransactionText).mockResolvedValue({
+      type: 'simulate_purchase',
+      amount: 50000,
+      note: 'Beli kopi',
+    });
+
+    render(<AiChatInterface />);
+    await userEvent.type(screen.getByPlaceholderText('Tulis pengeluaran...'), 'simulasi kopi 50k');
+    await userEvent.click(screen.getByRole('button'));
+    await waitFor(() => expect(screen.getByText('Pratinjau tindakan')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Konfirmasi tindakan'));
+
+    const latestState = vi.mocked(useFinance).mock.results[0]!.value.state;
+    latestState.snapshot.transactions.push({
+      id: '77777777-7777-4777-8777-777777777777',
+      type: 'expense',
+      category: 'food',
+      amount: 1900000,
+      occurredOn: '2026-08-01',
+      note: 'Pengeluaran baru',
+      source: 'manual',
+      createdAt: '2026-08-01T01:00:00.000Z',
+    });
+
+    await userEvent.click(screen.getByText('Catat sebagai pengeluaran'));
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/Data keuangan berubah/i)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText('Catat sebagai pengeluaran'));
+    expect(dispatchMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'add-transaction' }));
+  });
+
+  it('keeps an AI transaction draft open when edited fields fail schema validation', async () => {
+    vi.mocked(interpretTransactionText).mockResolvedValue({
+      type: 'expense',
+      amount: 50000,
+      category: 'food',
+      note: 'Makan',
+    });
+
+    render(<AiChatInterface />);
+    await userEvent.type(screen.getByPlaceholderText('Tulis pengeluaran...'), 'Makan 50k');
+    await userEvent.click(screen.getByRole('button'));
+    await waitFor(() => expect(screen.getByText('Konfirmasi Draft')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Nominal' }), {
+      target: { value: '', valueAsNumber: Number.NaN },
+    });
+    await userEvent.click(screen.getByText('Simpan'));
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/Periksa nominal, tanggal, dan catatan/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Nominal' }), {
+      target: { value: '50000' },
+    });
+    fireEvent.change(screen.getByLabelText('Tanggal'), { target: { value: '2026-02-30' } });
+    await userEvent.click(screen.getByText('Simpan'));
+    expect(dispatchMock).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Tanggal'), { target: { value: '2026-08-01' } });
+    await userEvent.clear(screen.getByPlaceholderText('Catatan...'));
+    await userEvent.click(screen.getByText('Simpan'));
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(screen.getByText('Konfirmasi Draft')).toBeInTheDocument();
   });
 });
 import type { PersistenceEnvelope } from 'src/features/finance/domain';
