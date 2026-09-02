@@ -69,6 +69,7 @@ describe('interpretTransactionText', () => {
       amount: 50000,
       category: 'food',
     });
+    expect(result).toMatchObject({ source: 'external', confidence: 'high' });
   });
 
   it('falls back if API fails', async () => {
@@ -79,6 +80,7 @@ describe('interpretTransactionText', () => {
       type: 'expense',
       amount: 50000,
     });
+    expect(result).toMatchObject({ source: 'fallback', confidence: 'medium' });
   });
 
   it('validates the internal API response before returning it', async () => {
@@ -103,7 +105,13 @@ describe('interpretTransactionText', () => {
 
     const result = await interpretTransactionText('x'.repeat(501));
 
-    expect(result).toEqual({ type: 'unknown', reason: 'Input must be 1..500 characters' });
+    expect(result).toMatchObject({ type: 'unknown', reason: 'Input must be 1..500 characters' });
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('recognizes paid obligation wording before generic obligation wording', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+    const result = await interpretTransactionText('sudah bayar listrik 200rb, tandai lunas');
+    expect(result).toMatchObject({ type: 'mark_obligation_paid', amount: 200000 });
   });
 });

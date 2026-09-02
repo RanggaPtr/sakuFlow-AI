@@ -2,8 +2,8 @@
 
 import type { ReactNode } from 'react';
 import type { FinanceState, FinanceAction } from './finance-reducer';
-import type { PersistenceEnvelope } from 'src/features/finance/domain';
 import type { FinanceRepository } from 'src/features/finance/storage/repository';
+import type { FinanceSnapshot, PersistenceEnvelope } from 'src/features/finance/domain';
 
 import { useRef, useState, useEffect, useReducer, createContext } from 'react';
 
@@ -18,6 +18,7 @@ export interface FinanceContextValue {
   dispatch: React.Dispatch<FinanceAction>;
   persistence: {
     reset(): Promise<boolean>;
+    replace(snapshot: FinanceSnapshot): Promise<boolean>;
     exportJson(): string;
     parseImport(raw: string): PersistenceEnvelope;
     confirmImport(envelope: PersistenceEnvelope): void;
@@ -88,6 +89,20 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
       }
       setPersistenceError(null);
       dispatch({ type: 'reset' });
+      return true;
+    },
+    async replace(snapshot) {
+      const result = getRepository().save(snapshot);
+      if (!result.ok) {
+        setPersistenceError(
+          result.code === 'quota'
+            ? 'Penyimpanan lokal penuh. Hapus ruang atau ekspor data lalu coba lagi.'
+            : 'Gagal menyimpan onboarding. Periksa data lalu coba lagi.'
+        );
+        return false;
+      }
+      setPersistenceError(null);
+      dispatch({ type: 'replace-from-import', snapshot });
       return true;
     },
     exportJson() {

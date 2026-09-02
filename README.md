@@ -47,14 +47,20 @@ yarn build
 
 ## Docker production
 
-Salin `.env.example` menjadi `.env.prod`, isi nilai production, kemudian jalankan:
+Docker tidak membutuhkan `.env.prod` dan tidak pernah menyalin file `.env*` ke
+build context. Berikan public build values dan optional AI runtime secrets dari
+environment Compose:
 
 ```sh
-docker compose up -d --build
+NEXT_PUBLIC_SITE_URL=https://finance.example.com \
+  AI_API_URL=https://provider.example/v1 \
+  AI_API_KEY='set-at-runtime' \
+  docker compose up -d --build
 ```
 
 Container berjalan di port 80. Nilai `NEXT_PUBLIC_*` dibekukan ketika image
-dibangun; ubah nilainya lalu build ulang image.
+dibangun; AI server vars hanya runtime. Detail dan checklist ada di
+`docs/deployment.md`.
 
 ## Struktur penting
 

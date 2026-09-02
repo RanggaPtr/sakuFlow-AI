@@ -15,8 +15,9 @@ import {
 } from 'src/features/finance/components';
 
 export default function DashboardPage() {
-  const { state } = useFinance();
-  const projection = selectProjection(state, toLocalYyyyMmDd(new Date()));
+  const { state, dispatch } = useFinance();
+  const today = toLocalYyyyMmDd(new Date());
+  const projection = selectProjection(state, today);
 
   if (!projection) return null;
 
@@ -26,6 +27,32 @@ export default function DashboardPage() {
         Dasbor
       </Typography>
       <Stack spacing={3}>
+        {projection.nextIncomeOn && today >= projection.nextIncomeOn && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (!window.confirm('Mulai siklus baru dan catat pemasukan rutin sekarang?')) return;
+              const now = new Date();
+              dispatch({
+                type: 'advance-cycle',
+                cycleId: crypto.randomUUID(),
+                today,
+                transaction: {
+                  id: crypto.randomUUID(),
+                  type: 'income',
+                  category: 'salary',
+                  amount: state.snapshot.cycle?.recurringIncome ?? 0,
+                  occurredOn: today,
+                  note: 'Pemasukan rutin',
+                  source: 'system',
+                  createdAt: now.toISOString(),
+                },
+              });
+            }}
+          >
+            Mulai siklus baru / Catat pemasukan rutin
+          </Button>
+        )}
         <DashboardOverview
           safeToSpendPerDay={projection.safeToSpendPerDay}
           remainingDays={projection.remainingDays}

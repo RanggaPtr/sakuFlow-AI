@@ -22,6 +22,7 @@ describe('SettingsPanel reset', () => {
       dispatch: vi.fn(),
       persistence: {
         reset,
+        replace: vi.fn(),
         exportJson: vi.fn(() => ''),
         parseImport: vi.fn(),
         confirmImport: vi.fn(),

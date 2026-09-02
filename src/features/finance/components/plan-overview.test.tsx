@@ -25,6 +25,7 @@ describe('PlanOverview creation flow', () => {
       dispatch,
       persistence: {
         reset: vi.fn(),
+        replace: vi.fn(),
         exportJson: vi.fn(() => ''),
         parseImport: vi.fn(
           (_raw: string): PersistenceEnvelope => ({
@@ -86,6 +87,7 @@ describe('PlanOverview creation flow', () => {
       dispatch,
       persistence: {
         reset: vi.fn(),
+        replace: vi.fn(),
         exportJson: vi.fn(() => ''),
         parseImport: vi.fn(),
         confirmImport: vi.fn(),
@@ -111,6 +113,7 @@ describe('PlanOverview creation flow', () => {
       dispatch,
       persistence: {
         reset: vi.fn(),
+        replace: vi.fn(),
         exportJson: vi.fn(() => ''),
         parseImport: vi.fn(),
         confirmImport: vi.fn(),

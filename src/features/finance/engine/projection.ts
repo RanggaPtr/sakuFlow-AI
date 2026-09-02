@@ -53,10 +53,13 @@ export function projectBudget(snapshot: FinanceSnapshot, today: string): Finance
 
   const { cycle, transactions, obligations, goals, allocation } = snapshot;
 
-  const incomeTransactions = transactions
+  const cycleTransactions = transactions.filter(
+    (t) => t.occurredOn >= cycle.startsOn && t.occurredOn <= today
+  );
+  const incomeTransactions = cycleTransactions
     .filter((t) => t.type === 'income')
     .reduce((sum, t) => sum + t.amount, 0);
-  const spent = transactions
+  const spent = cycleTransactions
     .filter((t) => t.type === 'expense')
     .reduce((sum, t) => sum + t.amount, 0);
 

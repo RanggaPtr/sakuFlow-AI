@@ -151,4 +151,36 @@ describe('projectBudget', () => {
     expect(result.safeToSpendPerDay).toBe(1950000); // safePool 1950000 / 1
     expect(result.reasonCodes).toContain('cycle-stale');
   });
+
+  it('only counts transactions in the active cycle through today', () => {
+    const snapshot = makeFinanceSnapshot({
+      transactions: [
+        {
+          id: '66666666-6666-4666-8666-666666666666',
+          type: 'expense',
+          category: 'other',
+          amount: 900000,
+          occurredOn: '2026-07-31',
+          note: 'Riwayat lama',
+          source: 'manual',
+          createdAt: '2026-07-31T01:00:00.000Z',
+        },
+        {
+          id: '77777777-7777-4777-8777-777777777777',
+          type: 'expense',
+          category: 'other',
+          amount: 800000,
+          occurredOn: '2026-08-04',
+          note: 'Belum terjadi',
+          source: 'manual',
+          createdAt: '2026-08-04T01:00:00.000Z',
+        },
+      ],
+    });
+
+    const result = projectBudget(snapshot, '2026-08-03');
+
+    expect(result.spent).toBe(0);
+    expect(result.liquidBalance).toBe(4000000);
+  });
 });

@@ -1,14 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # ============================================================================
-# Build & run:  docker compose up -d --build
-# (manual:      docker build -t sakuflow-ai . && docker run --env-file .env.prod -p 80:80 sakuflow-ai)
-#
-# Env dibaca dari .env.prod DUA kali:
-#   1. Saat BUILD — di-copy jadi .env.production supaya NEXT_PUBLIC_* ter-inline
-#      ke bundle JS. Nilai ini dibekukan di image: ganti .env.prod ⇒ rebuild.
-#   2. Saat RUN   — env_file di docker-compose.yml untuk var server-only
-#      (API_URL, REVALIDATE_TOKEN) yang dibaca dari process.env saat runtime.
+# Build & run: docker compose up -d --build
+# Public NEXT_PUBLIC_* values are supplied as safe build args. Secrets and
+# server-only AI values are runtime environment only.
 # ============================================================================
 
 FROM node:22-alpine AS deps
@@ -25,9 +20,13 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     HUSKY=0
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# NEXT_PUBLIC_* wajib tersedia SAAT build (bukan runtime) — lihat catatan atas.
-# Validasi zod di src/lib/env.ts menggagalkan build bila ada var wajib kosong.
-RUN cp .env.prod .env.production && yarn build
+ARG NEXT_PUBLIC_SITE_URL=http://localhost:8002
+ARG NEXT_PUBLIC_ASSETS_DIR=
+ARG NEXT_PUBLIC_SHOW_COMPONENTS=
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NEXT_PUBLIC_ASSETS_DIR=$NEXT_PUBLIC_ASSETS_DIR \
+    NEXT_PUBLIC_SHOW_COMPONENTS=$NEXT_PUBLIC_SHOW_COMPONENTS
+RUN yarn build
 
 FROM node:22-alpine AS runner
 WORKDIR /app

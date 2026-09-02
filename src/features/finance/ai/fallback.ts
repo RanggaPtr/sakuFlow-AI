@@ -27,6 +27,21 @@ export function fallbackInterpretation(text: string): FinanceIntent {
     return { type: 'unknown', reason: 'Could not extract amount' };
   }
 
+  if (/(lunas|sudah dibayar|sudah bayar)/.test(lower) && /(bayar|tandai|lunas)/.test(lower)) {
+    const name = text
+      .replace(
+        /tandai|tandain|sudah|dibayar|bayar|lunas|sebesar|dan|,|\d+(?:[.,]\d+)?\s*(?:jt|juta|k|rb|ribu)?/gi,
+        ' '
+      )
+      .replace(/\s+/g, ' ')
+      .trim();
+    return financeIntentSchema.parse({
+      type: 'mark_obligation_paid',
+      obligationName: name || 'Tanggungan',
+      amount,
+    });
+  }
+
   if (/(tagihan|tanggungan|cicilan)/.test(lower)) {
     const due = new Date();
     due.setDate(due.getDate() + 1);
@@ -64,21 +79,6 @@ export function fallbackInterpretation(text: string): FinanceIntent {
 
   if (/(simulasi|simulasikan)/.test(lower)) {
     return financeIntentSchema.parse({ type: 'simulate_purchase', amount, note: text });
-  }
-
-  if (/(tandai|tandain|bayar).*(lunas|sudah dibayar)/.test(lower)) {
-    const name = text
-      .replace(
-        /tandai|tandain|bayar|lunas|sudah dibayar|sebesar|\d+(?:[.,]\d+)?\s*(?:jt|juta|k|rb|ribu)?/gi,
-        ' '
-      )
-      .replace(/\s+/g, ' ')
-      .trim();
-    return financeIntentSchema.parse({
-      type: 'mark_obligation_paid',
-      obligationName: name || 'Tanggungan',
-      amount,
-    });
   }
 
   const isIncome = lower.includes('gaji') || lower.includes('dapat') || lower.includes('bonus');

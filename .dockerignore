@@ -13,11 +13,8 @@ build
 Jenkinsfile
 docs
 
-# Env lokal TIDAK boleh bocor ke image — build hanya memakai .env.prod
-.env
-.env.local
-.env.development
-.env*.local
+# Semua env file (termasuk .env.prod dan secrets) tidak boleh masuk build context.
+.env*
 
 # Lain-lain
 .DS_Store

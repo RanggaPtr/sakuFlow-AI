@@ -101,6 +101,8 @@ export function SettingsPanel() {
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Ekspor dan impor memakai format cadangan SakuFlow yang sama dengan penyimpanan lokal.
+            Jika provider AI dikonfigurasi, hanya teks perintah aktif yang dikirim; ledger, profil,
+            dan riwayat tidak pernah dikirim.
           </Typography>
           {message && (
             <Alert severity={message.includes('berhasil') ? 'success' : 'error'} sx={{ mb: 2 }}>

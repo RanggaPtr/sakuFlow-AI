@@ -43,6 +43,15 @@ export function clampIncomeDay(year: number, monthIndex: number, requestedDay: n
   return Math.max(1, Math.min(requestedDay, daysInMonth));
 }
 
+export function nextIncomeDateAfter(todayStr: string, incomeDay: number): string {
+  const today = parseYyyyMmDd(todayStr);
+  const nextMonth = today.getUTCMonth() + 1;
+  const year = today.getUTCFullYear() + Math.floor(nextMonth / 12);
+  const monthIndex = nextMonth % 12;
+  const day = clampIncomeDay(year, monthIndex, incomeDay);
+  return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 function parseYyyyMmDd(str: string): Date {
   const [y = 0, m = 1, d = 1] = str.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d));

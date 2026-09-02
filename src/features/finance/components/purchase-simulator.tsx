@@ -22,6 +22,8 @@ export function PurchaseSimulator() {
   const [amountInput, setAmountInput] = useState('');
   const [noteInput, setNoteInput] = useState('');
   const [result, setResult] = useState<PurchaseSimulationResult | null>(null);
+  const [simulatedOn, setSimulatedOn] = useState<string | null>(null);
+  const [staleNotice, setStaleNotice] = useState('');
 
   const formatRp = (n: number) =>
     new Intl.NumberFormat('id-ID', {
@@ -41,11 +43,31 @@ export function PurchaseSimulator() {
       amount,
     });
     setResult(simResult);
+    setSimulatedOn(today);
+    setStaleNotice('');
   };
 
   const handleSave = () => {
     const amount = Number(amountInput);
     if (!Number.isSafeInteger(amount) || amount <= 0) return;
+    if (!result) return;
+
+    const today = toLocalYyyyMmDd(new Date());
+    const latest = simulatePurchase({ snapshot: state.snapshot, today, amount });
+    const materiallyChanged =
+      simulatedOn !== today ||
+      latest.verdict !== result.verdict ||
+      latest.after.liquidBalance !== result.after.liquidBalance ||
+      latest.after.safePool !== result.after.safePool ||
+      latest.after.safeToSpendPerDay !== result.after.safeToSpendPerDay;
+    if (materiallyChanged) {
+      setResult(latest);
+      setSimulatedOn(today);
+      setStaleNotice(
+        'Data keuangan berubah. Hasil terbaru ditampilkan; periksa lalu konfirmasi lagi.'
+      );
+      return;
+    }
 
     dispatch({
       type: 'add-transaction',
@@ -54,7 +76,7 @@ export function PurchaseSimulator() {
         type: 'expense',
         category: 'other',
         amount,
-        occurredOn: toLocalYyyyMmDd(new Date()),
+        occurredOn: today,
         note: noteInput.trim() || 'Simulasi Pembelian',
         source: 'manual',
         createdAt: new Date().toISOString(),
@@ -64,6 +86,8 @@ export function PurchaseSimulator() {
     setAmountInput('');
     setNoteInput('');
     setResult(null);
+    setSimulatedOn(null);
+    setStaleNotice('');
     alert('Tersimpan!');
   };
 
@@ -105,6 +129,12 @@ export function PurchaseSimulator() {
           Cek Dulu
         </Button>
       </Stack>
+
+      {staleNotice && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {staleNotice}
+        </Alert>
+      )}
 
       {result && (
         <Box sx={{ mt: 2 }}>

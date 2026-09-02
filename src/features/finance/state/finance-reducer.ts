@@ -7,9 +7,11 @@ import type {
 } from 'src/features/finance/domain';
 
 import {
+  isYyyyMmDd,
   obligationSchema,
   savingsGoalSchema,
   transactionSchema,
+  nextIncomeDateAfter,
   financeSnapshotSchema,
   createEmptyFinanceSnapshot,
   obligationCategoryToTransactionCategory,
@@ -31,6 +33,7 @@ export type FinanceAction =
   | { type: 'mark-obligation-paid'; obligationId: string; transaction: Transaction }
   | { type: 'add-goal'; goal: SavingsGoal }
   | { type: 'contribute-to-goal'; goalId: string; amount: number; transaction: Transaction }
+  | { type: 'advance-cycle'; cycleId: string; today: string; transaction: Transaction }
   | { type: 'update-allocation'; bufferAmount: number }
   | { type: 'replace-from-import'; snapshot: FinanceSnapshot }
   | { type: 'reset' };
@@ -192,6 +195,51 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
           ),
         },
       };
+    }
+    case 'advance-cycle': {
+      const { cycle, profile, transactions } = state.snapshot;
+      if (!cycle || !profile || !isYyyyMmDd(action.today) || action.today < cycle.nextIncomeOn) {
+        return state;
+      }
+      const candidate = transactionSchema.safeParse(action.transaction);
+      if (!candidate.success) return state;
+      if (
+        candidate.data.type !== 'income' ||
+        candidate.data.category !== 'salary' ||
+        candidate.data.amount !== cycle.recurringIncome ||
+        candidate.data.occurredOn !== action.today ||
+        candidate.data.source !== 'system' ||
+        transactions.some((transaction) => transaction.id === candidate.data.id) ||
+        action.cycleId === cycle.id
+      ) {
+        return state;
+      }
+      const currentCycleTransactions = transactions.filter(
+        (transaction) =>
+          transaction.occurredOn >= cycle.startsOn && transaction.occurredOn <= action.today
+      );
+      const currentLiquid =
+        cycle.openingBalance +
+        currentCycleTransactions
+          .filter((transaction) => transaction.type === 'income')
+          .reduce((sum, transaction) => sum + transaction.amount, 0) -
+        currentCycleTransactions
+          .filter((transaction) => transaction.type === 'expense')
+          .reduce((sum, transaction) => sum + transaction.amount, 0);
+      const nextCycle = {
+        ...cycle,
+        id: action.cycleId,
+        startsOn: action.today,
+        nextIncomeOn: nextIncomeDateAfter(action.today, profile.incomeDay),
+        openingBalance: currentLiquid,
+      };
+      const validated = financeSnapshotSchema.safeParse({
+        ...state.snapshot,
+        cycle: nextCycle,
+        transactions: [...transactions, candidate.data],
+      });
+      if (!validated.success) return state;
+      return { ...state, snapshot: validated.data };
     }
     case 'update-allocation': {
       if (!Number.isSafeInteger(action.bufferAmount) || action.bufferAmount < 0) return state;

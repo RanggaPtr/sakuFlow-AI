@@ -17,6 +17,7 @@ import DialogActions from '@mui/material/DialogActions';
 import { useFinance } from 'src/features/finance/state';
 import {
   toLocalYyyyMmDd,
+  transactionSchema,
   TRANSACTION_CATEGORIES,
   parseStrictIntegerMoney,
   transactionCategorySchema,
@@ -58,22 +59,31 @@ export function TransactionDialog({ open, onClose, transaction = null }: Props) 
       return;
     }
 
-    const tx: Transaction = {
+    const tx = {
       ...(transaction ?? {}),
       id: transaction?.id ?? crypto.randomUUID(),
       type,
-      category: transactionCategorySchema.parse(category),
+      category,
       amount: val,
       occurredOn,
       note: note.trim(),
       source: transaction?.source ?? 'manual',
       createdAt: transaction?.createdAt ?? new Date().toISOString(),
     };
+    const parsed = transactionSchema.safeParse(tx);
+    if (!parsed.success) {
+      setError('Nominal, tanggal, kategori, dan catatan harus valid.');
+      return;
+    }
 
     if (transaction) {
-      dispatch({ type: 'update-transaction', transactionId: transaction.id, transaction: tx });
+      dispatch({
+        type: 'update-transaction',
+        transactionId: transaction.id,
+        transaction: parsed.data,
+      });
     } else {
-      dispatch({ type: 'add-transaction', transaction: tx });
+      dispatch({ type: 'add-transaction', transaction: parsed.data });
     }
 
     setAmount('');

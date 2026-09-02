@@ -25,9 +25,8 @@ pipeline {
 
     stage('Env (contoh)') {
       steps {
-        // Build butuh env valid (divalidasi zod di src/lib/env.ts).
-        // CI gate memakai nilai contoh; deploy production mengganti .env
-        // dengan nilai asli per-client sebelum `yarn build`.
+        // Local build uses explicit example values; Docker build uses safe
+        // defaults/build args and never reads .env.prod from its context.
         sh 'cp .env.example .env'
       }
     }
@@ -70,7 +69,7 @@ pipeline {
 
     stage('Docker Build') {
       steps {
-        sh 'docker compose build --no-cache'
+        sh 'docker compose build --no-cache --progress=plain'
       }
     }
   }

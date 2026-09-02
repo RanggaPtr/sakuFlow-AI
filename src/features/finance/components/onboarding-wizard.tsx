@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useRef, useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -23,26 +23,45 @@ function tomorrowLocal(): string {
 }
 
 export function OnboardingWizard() {
-  const { dispatch } = useFinance();
+  const { persistence } = useFinance();
   const router = useRouter();
   const [currentBalance, setCurrentBalance] = useState('');
   const [recurringIncome, setRecurringIncome] = useState('');
   const [nextPayday, setNextPayday] = useState('');
   const [fixedBuffer, setFixedBuffer] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const mountedRef = useRef(true);
 
-  const handleConfirm = (event: React.FormEvent<HTMLFormElement>) => {
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    []
+  );
+
+  const handleConfirm = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (saving) return;
     try {
       const snapshot = buildOnboardingSnapshot(
         { currentBalance, recurringIncome, nextPayday, fixedBuffer },
         new Date(),
         () => crypto.randomUUID()
       );
-      dispatch({ type: 'complete-onboarding', snapshot });
+      setSaving(true);
+      setError('');
+      const saved = await persistence.replace(snapshot);
+      if (!mountedRef.current) return;
+      if (!saved) {
+        setError('Gagal menyimpan data onboarding. Periksa penyimpanan lokal lalu coba lagi.');
+        return;
+      }
       router.replace(paths.dashboard);
     } catch {
-      setError('Periksa kembali nominal Rupiah bulat dan tanggal gajian berikutnya.');
+      if (mountedRef.current) setError('Periksa data atau penyimpanan lokal, lalu coba lagi.');
+    } finally {
+      if (mountedRef.current) setSaving(false);
     }
   };
 
@@ -114,8 +133,8 @@ export function OnboardingWizard() {
               onChange={(event) => setFixedBuffer(event.target.value)}
               slotProps={{ htmlInput: { min: 0, step: 1 } }}
             />
-            <Button type="submit" variant="contained" size="large" fullWidth>
-              Konfirmasi & mulai
+            <Button type="submit" variant="contained" size="large" fullWidth disabled={saving}>
+              {saving ? 'Menyimpan…' : 'Konfirmasi & mulai'}
             </Button>
           </Stack>
         </Box>

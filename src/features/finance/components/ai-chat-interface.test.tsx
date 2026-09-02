@@ -30,6 +30,7 @@ describe('AiChatInterface Draft Flow', () => {
       dispatch: dispatchMock,
       persistence: {
         reset: vi.fn(),
+        replace: vi.fn(),
         exportJson: vi.fn(() => ''),
         parseImport: vi.fn(
           (_raw: string): PersistenceEnvelope => ({
@@ -242,6 +243,7 @@ describe('AiChatInterface Draft Flow', () => {
       dispatch: dispatchMock,
       persistence: {
         reset: vi.fn(),
+        replace: vi.fn(),
         exportJson: vi.fn(() => ''),
         parseImport: vi.fn(),
         confirmImport: vi.fn(),

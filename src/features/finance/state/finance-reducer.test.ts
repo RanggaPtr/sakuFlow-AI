@@ -224,4 +224,77 @@ describe('financeReducer', () => {
       })
     ).toBe(state);
   });
+
+  it('advances a due cycle atomically and records recurring income once', () => {
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: makeFinanceSnapshot({
+        profile: { ...makeFinanceSnapshot().profile!, incomeDay: 11 },
+        cycle: { ...makeFinanceSnapshot().cycle!, nextIncomeOn: '2026-08-11' },
+      }),
+      corruptRawValue: null,
+    };
+    const action: FinanceAction = {
+      type: 'advance-cycle',
+      cycleId: '88888888-8888-4888-8888-888888888888',
+      today: '2026-08-11',
+      transaction: {
+        id: '99999999-9999-4999-8999-999999999999',
+        type: 'income',
+        category: 'salary',
+        amount: 6000000,
+        occurredOn: '2026-08-11',
+        note: 'Pemasukan rutin',
+        source: 'system',
+        createdAt: '2026-08-11T00:00:00.000Z',
+      },
+    };
+
+    const next = financeReducer(state, action);
+
+    expect(next.snapshot.cycle).toMatchObject({
+      id: action.cycleId,
+      startsOn: '2026-08-11',
+      nextIncomeOn: '2026-09-11',
+      openingBalance: 4000000,
+    });
+    expect(next.snapshot.transactions).toContainEqual(action.transaction);
+    expect(financeReducer(next, action)).toBe(next);
+  });
+
+  it('rejects early cycle advancement and clamps the next date at month end', () => {
+    const base = makeFinanceSnapshot();
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: {
+        ...base,
+        profile: { ...base.profile!, incomeDay: 31 },
+        cycle: { ...base.cycle!, nextIncomeOn: '2026-08-31' },
+      },
+      corruptRawValue: null,
+    };
+    const early: FinanceAction = {
+      type: 'advance-cycle',
+      cycleId: '88888888-8888-4888-8888-888888888888',
+      today: '2026-08-30',
+      transaction: {
+        id: '99999999-9999-4999-8999-999999999999',
+        type: 'income',
+        category: 'salary',
+        amount: 6000000,
+        occurredOn: '2026-08-30',
+        note: 'Pemasukan rutin',
+        source: 'system',
+        createdAt: '2026-08-30T00:00:00.000Z',
+      },
+    };
+    expect(financeReducer(state, early)).toBe(state);
+
+    const due = {
+      ...early,
+      today: '2026-08-31',
+      transaction: { ...early.transaction, occurredOn: '2026-08-31' },
+    };
+    expect(financeReducer(state, due).snapshot.cycle?.nextIncomeOn).toBe('2026-09-30');
+  });
 });

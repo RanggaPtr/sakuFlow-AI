@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
-import { render, screen } from '@testing-library/react';
-import { vi, it, expect, describe, beforeEach } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
+import { vi, it, expect, describe, afterEach, beforeEach } from 'vitest';
 
 import { useFinance } from 'src/features/finance/state';
 import { makeFinanceSnapshot } from 'src/features/finance/test/fixtures';
@@ -24,6 +24,7 @@ describe('PurchaseSimulator', () => {
       dispatch,
       persistence: {
         reset: vi.fn(),
+        replace: vi.fn(),
         exportJson: vi.fn(() => ''),
         parseImport: vi.fn(
           (_raw: string): PersistenceEnvelope => ({
@@ -36,6 +37,8 @@ describe('PurchaseSimulator', () => {
       },
     });
   });
+
+  afterEach(cleanup);
 
   it('persists only a separately confirmed normal manual transaction', async () => {
     const user = userEvent.setup();
@@ -53,6 +56,31 @@ describe('PurchaseSimulator', () => {
         transaction: expect.objectContaining({ source: 'manual' }),
       })
     );
+  });
+
+  it('rechecks the latest snapshot before recording a stale simulation', async () => {
+    const user = userEvent.setup();
+    render(<PurchaseSimulator />);
+    await user.type(screen.getByLabelText('Nominal Pengeluaran'), '100000');
+    await user.click(screen.getByRole('button', { name: 'Cek Dulu' }));
+
+    const latestState = vi.mocked(useFinance).mock.results[0]!.value.state;
+    latestState.snapshot.transactions.push({
+      id: '77777777-7777-4777-8777-777777777777',
+      type: 'expense',
+      category: 'food',
+      amount: 1900000,
+      occurredOn: '2026-08-01',
+      note: 'Pengeluaran baru',
+      source: 'manual',
+      createdAt: '2026-08-01T01:00:00.000Z',
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Catat sebagai pengeluaran' }));
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(screen.getByText(/Data keuangan berubah/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Catat sebagai pengeluaran' }));
+    expect(dispatch).toHaveBeenCalledOnce();
   });
 });
 import type { PersistenceEnvelope } from 'src/features/finance/domain';

@@ -3,9 +3,26 @@ import type { FinanceIntent } from './schema';
 import { fallbackInterpretation } from './fallback';
 import { financeIntentSchema, financeTextRequestSchema } from './schema';
 
-export async function interpretTransactionText(text: string): Promise<FinanceIntent> {
+export type InterpretationSource = 'external' | 'fallback';
+export type InterpretationConfidence = 'high' | 'medium';
+export type InterpretedFinanceIntent = FinanceIntent & {
+  source?: InterpretationSource;
+  confidence?: InterpretationConfidence;
+};
+
+function fallback(text: string): InterpretedFinanceIntent {
+  return { ...fallbackInterpretation(text), source: 'fallback', confidence: 'medium' };
+}
+
+export async function interpretTransactionText(text: string): Promise<InterpretedFinanceIntent> {
   const input = financeTextRequestSchema.safeParse({ text });
-  if (!input.success) return { type: 'unknown', reason: 'Input must be 1..500 characters' };
+  if (!input.success)
+    return {
+      type: 'unknown',
+      reason: 'Input must be 1..500 characters',
+      source: 'fallback',
+      confidence: 'medium',
+    };
 
   try {
     const response = await fetch('/api/ai/parse', {
@@ -15,13 +32,15 @@ export async function interpretTransactionText(text: string): Promise<FinanceInt
     });
 
     if (!response.ok) {
-      return fallbackInterpretation(input.data.text);
+      return fallback(input.data.text);
     }
 
     const data: unknown = await response.json();
     const parsed = financeIntentSchema.safeParse(data);
-    return parsed.success ? parsed.data : fallbackInterpretation(input.data.text);
+    return parsed.success
+      ? { ...parsed.data, source: 'external', confidence: 'high' }
+      : fallback(input.data.text);
   } catch {
-    return fallbackInterpretation(input.data.text);
+    return fallback(input.data.text);
   }
 }

@@ -45,6 +45,7 @@ describe('TransactionList', () => {
       dispatch,
       persistence: {
         reset: vi.fn(),
+        replace: vi.fn(),
         exportJson: vi.fn(() => ''),
         parseImport: vi.fn(),
         confirmImport: vi.fn(),

@@ -1,7 +1,7 @@
 'use client';
 
-import type { FinanceIntent } from 'src/features/finance/ai';
 import type { Transaction } from 'src/features/finance/domain';
+import type { FinanceIntent, InterpretedFinanceIntent } from 'src/features/finance/ai';
 import type { PurchaseSimulationResult } from 'src/features/finance/engine/simulate-purchase';
 
 import { useState } from 'react';
@@ -61,6 +61,9 @@ export function AiChatInterface() {
   ]);
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState<Transaction | null>(null);
+  const [draftProvenance, setDraftProvenance] = useState<
+    Pick<InterpretedFinanceIntent, 'source' | 'confidence'>
+  >({});
   const [draftError, setDraftError] = useState('');
   const [intentDraft, setIntentDraft] = useState<FinanceIntent | null>(null);
   const [intentSimulation, setIntentSimulation] = useState<IntentSimulation | null>(null);
@@ -103,6 +106,7 @@ export function AiChatInterface() {
         transaction.category = intent.category;
 
         setDraft(transaction);
+        setDraftProvenance({ source: intent.source, confidence: intent.confidence });
         setDraftError('');
         setMessages((prev) => [
           ...prev,
@@ -162,11 +166,13 @@ export function AiChatInterface() {
       },
     ]);
     setDraft(null);
+    setDraftProvenance({});
     setDraftError('');
   };
 
   const handleCancelDraft = () => {
     setDraft(null);
+    setDraftProvenance({});
     setDraftError('');
     setMessages((prev) => [
       ...prev,
@@ -403,6 +409,11 @@ export function AiChatInterface() {
           }}
         >
           <Typography variant="subtitle2">Konfirmasi Draft</Typography>
+          <Typography variant="body2">Kategori: {draft.category}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Sumber: {draftProvenance.source === 'external' ? 'AI eksternal' : 'Fallback lokal'} ·
+            Keyakinan: {draftProvenance.confidence === 'high' ? 'tinggi' : 'sedang'}
+          </Typography>
           {draftError && <Typography color="error">{draftError}</Typography>}
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Select
