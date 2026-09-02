@@ -77,10 +77,16 @@ export function SettingsPanel() {
     setMessage('Data cadangan berhasil diterapkan.');
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (resetConfirm !== 'HAPUS DATA') return;
-    persistence.reset();
-    router.replace(paths.onboarding);
+    const succeeded = await persistence.reset();
+    if (succeeded) {
+      router.replace(paths.onboarding);
+    } else {
+      setMessage(
+        'Data lama dipertahankan karena penghapusan gagal. Coba lagi setelah memeriksa penyimpanan.'
+      );
+    }
   };
 
   return (

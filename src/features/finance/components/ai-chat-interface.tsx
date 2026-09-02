@@ -2,6 +2,7 @@
 
 import type { FinanceIntent } from 'src/features/finance/ai';
 import type { Transaction } from 'src/features/finance/domain';
+import type { PurchaseSimulationResult } from 'src/features/finance/engine/simulate-purchase';
 
 import { useState } from 'react';
 
@@ -16,6 +17,7 @@ import Typography from '@mui/material/Typography';
 
 import { useFinance } from 'src/features/finance/state';
 import { interpretTransactionText } from 'src/features/finance/ai';
+import { projectBudget, simulatePurchase } from 'src/features/finance/engine';
 import {
   buildGoal,
   buildObligation,
@@ -28,6 +30,12 @@ interface Message {
   id: string;
   sender: 'user' | 'ai';
   text: string;
+}
+
+interface IntentSimulation {
+  amount: number;
+  note: string;
+  result: PurchaseSimulationResult;
 }
 
 export function AiChatInterface() {
@@ -43,6 +51,7 @@ export function AiChatInterface() {
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState<Transaction | null>(null);
   const [intentDraft, setIntentDraft] = useState<FinanceIntent | null>(null);
+  const [intentSimulation, setIntentSimulation] = useState<IntentSimulation | null>(null);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,6 +158,29 @@ export function AiChatInterface() {
     ]);
   };
 
+  const handleRecordSimulation = () => {
+    if (!intentSimulation) return;
+    const now = new Date();
+    dispatch({
+      type: 'add-transaction',
+      transaction: {
+        id: crypto.randomUUID(),
+        type: 'expense',
+        category: 'other',
+        amount: intentSimulation.amount,
+        occurredOn: toLocalYyyyMmDd(now),
+        note: intentSimulation.note,
+        source: 'manual',
+        createdAt: now.toISOString(),
+      },
+    });
+    setIntentSimulation(null);
+    setMessages((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), sender: 'ai', text: 'Pengeluaran dicatat setelah simulasi.' },
+    ]);
+  };
+
   const handleConfirmIntent = () => {
     if (!intentDraft) return;
     const now = new Date();
@@ -184,19 +216,19 @@ export function AiChatInterface() {
         });
         break;
       case 'simulate_purchase':
-        dispatch({
-          type: 'add-transaction',
-          transaction: {
-            id: crypto.randomUUID(),
-            type: 'expense',
-            category: 'other',
+        setIntentSimulation({
+          amount: intentDraft.amount,
+          note: intentDraft.note,
+          result: simulatePurchase({
+            snapshot: state.snapshot,
+            today: toLocalYyyyMmDd(now),
             amount: intentDraft.amount,
-            occurredOn: toLocalYyyyMmDd(now),
-            note: intentDraft.note,
-            source: 'manual',
-            createdAt: now.toISOString(),
-          },
+          }),
         });
+        setMessages((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), sender: 'ai', text: 'Simulasi selesai. Data belum diubah.' },
+        ]);
         break;
       case 'mark_obligation_paid': {
         const obligation = state.snapshot.obligations.find(
@@ -204,7 +236,7 @@ export function AiChatInterface() {
             item.name.toLowerCase() === intentDraft.obligationName.toLowerCase() &&
             item.amount === intentDraft.amount
         );
-        if (obligation) {
+        if (obligation && obligation.status === 'unpaid') {
           dispatch({
             type: 'mark-obligation-paid',
             obligationId: obligation.id,
@@ -219,11 +251,33 @@ export function AiChatInterface() {
               createdAt: now.toISOString(),
             },
           });
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: crypto.randomUUID(),
+              sender: 'ai',
+              text: `Tanggungan “${intentDraft.obligationName}” sebesar ${formatRp(intentDraft.amount)} tidak ditemukan atau sudah lunas. Periksa nama dan nominalnya.`,
+            },
+          ]);
+          setIntentDraft(null);
+          return;
         }
         break;
       }
-      case 'ask_summary':
-        break;
+      case 'ask_summary': {
+        const projection = projectBudget(state.snapshot, toLocalYyyyMmDd(now));
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            sender: 'ai',
+            text: `Ringkasan: saldo cair ${formatRp(projection.liquidBalance)}, dana aman ${formatRp(projection.safePool)}, dan jatah harian ${formatRp(projection.safeToSpendPerDay)}. Kondisi: ${projection.health}.`,
+          },
+        ]);
+        setIntentDraft(null);
+        return;
+      }
       default:
         break;
     }
@@ -362,6 +416,34 @@ export function AiChatInterface() {
             </Button>
             <Button variant="contained" fullWidth onClick={handleConfirmIntent}>
               Konfirmasi tindakan
+            </Button>
+          </Box>
+        </Box>
+      ) : intentSimulation ? (
+        <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'background.neutral' }}>
+          <Typography variant="subtitle2">Hasil simulasi</Typography>
+          <Typography variant="body2" sx={{ my: 1 }}>
+            {intentSimulation.result.verdict === 'safe'
+              ? 'Pembelian ini masih aman.'
+              : intentSimulation.result.verdict === 'tight'
+                ? 'Pembelian ini bisa dilakukan, tetapi ruang harian menjadi ketat.'
+                : 'Pembelian ini belum aman untuk kondisi saat ini.'}
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Sisa jatah harian setelah simulasi:{' '}
+            {formatRp(intentSimulation.result.after.safeToSpendPerDay)}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              color="inherit"
+              fullWidth
+              onClick={() => setIntentSimulation(null)}
+            >
+              Tutup
+            </Button>
+            <Button variant="contained" fullWidth onClick={handleRecordSimulation}>
+              Catat sebagai pengeluaran
             </Button>
           </Box>
         </Box>

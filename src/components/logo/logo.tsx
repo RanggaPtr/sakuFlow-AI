@@ -10,14 +10,9 @@ import { styled } from '@mui/material/styles';
 
 import { RouterLink } from 'src/routes/components';
 
-import { CONFIG } from 'src/global-config';
-
 import { logoClasses } from './classes';
 
 // ----------------------------------------------------------------------
-
-const fullLogoSrc = `${CONFIG.assetsDir}/assets/venturo/logo-venturo-software-house-malang.webp`;
-const singleLogoSrc = `${CONFIG.assetsDir}/assets/venturo/logo-venturo-icon.webp`;
 
 export type LogoProps = LinkProps & {
   isSingle?: boolean;
@@ -36,7 +31,7 @@ export function Logo({
     <LogoRoot
       component={RouterLink}
       href={href}
-      aria-label="Venturo"
+      aria-label="SakuFlow AI"
       underline="none"
       className={mergeClasses([logoClasses.root, className])}
       sx={[
@@ -50,12 +45,14 @@ export function Logo({
       ]}
       {...other}
     >
-      <Box
-        component="img"
-        alt="Venturo"
-        src={isSingle ? singleLogoSrc : fullLogoSrc}
-        sx={{ height: '100%', width: isSingle ? '100%' : 'auto', objectFit: 'contain' }}
-      />
+      <Box component="span" aria-hidden="true" sx={{ fontSize: 22, lineHeight: 1 }}>
+        ◈
+      </Box>
+      {!isSingle && (
+        <Box component="span" sx={{ ml: 1, fontWeight: 700 }}>
+          SakuFlow AI
+        </Box>
+      )}
     </LogoRoot>
   );
 }

@@ -115,4 +115,11 @@ describe('financeReducer validations', () => {
 
     expect(financeReducer(state, action)).toBe(state);
   });
+
+  it('updates fixed buffer settings only for safe non-negative integers', () => {
+    const state = getInitialState();
+    const next = financeReducer(state, { type: 'update-allocation', bufferAmount: 750000 });
+    expect(next.snapshot.allocation.bufferAmount).toBe(750000);
+    expect(financeReducer(state, { type: 'update-allocation', bufferAmount: 1.5 })).toBe(state);
+  });
 });

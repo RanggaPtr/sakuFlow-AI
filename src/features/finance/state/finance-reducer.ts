@@ -25,11 +25,13 @@ export type FinanceAction =
   | { type: 'hydrate'; result: LoadFinanceResult }
   | { type: 'complete-onboarding'; snapshot: FinanceSnapshot }
   | { type: 'add-transaction'; transaction: Transaction }
+  | { type: 'update-transaction'; transactionId: string; transaction: Transaction }
   | { type: 'delete-transaction'; transactionId: string }
   | { type: 'add-obligation'; obligation: Obligation }
   | { type: 'mark-obligation-paid'; obligationId: string; transaction: Transaction }
   | { type: 'add-goal'; goal: SavingsGoal }
   | { type: 'contribute-to-goal'; goalId: string; amount: number; transaction: Transaction }
+  | { type: 'update-allocation'; bufferAmount: number }
   | { type: 'replace-from-import'; snapshot: FinanceSnapshot }
   | { type: 'reset' };
 
@@ -64,6 +66,30 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
         snapshot: {
           ...state.snapshot,
           transactions: [...state.snapshot.transactions, candidate.data],
+        },
+      };
+    }
+    case 'update-transaction': {
+      const current = state.snapshot.transactions.find((t) => t.id === action.transactionId);
+      if (!current) return state;
+      if (
+        state.snapshot.obligations.some((obligation) => obligation.paidTransactionId === current.id)
+      ) {
+        return state;
+      }
+      const candidate = transactionSchema.safeParse({
+        ...action.transaction,
+        id: current.id,
+        createdAt: current.createdAt,
+      });
+      if (!candidate.success) return state;
+      return {
+        ...state,
+        snapshot: {
+          ...state.snapshot,
+          transactions: state.snapshot.transactions.map((transaction) =>
+            transaction.id === current.id ? candidate.data : transaction
+          ),
         },
       };
     }
@@ -158,6 +184,16 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
               ? { ...g, contributedAmount: newContributed, status: newStatus }
               : g
           ),
+        },
+      };
+    }
+    case 'update-allocation': {
+      if (!Number.isSafeInteger(action.bufferAmount) || action.bufferAmount < 0) return state;
+      return {
+        ...state,
+        snapshot: {
+          ...state.snapshot,
+          allocation: { bufferMode: 'fixed', bufferAmount: action.bufferAmount },
         },
       };
     }

@@ -99,7 +99,13 @@ export const savingsGoalSchema = z
   })
   .refine((data) => data.contributedAmount <= data.targetAmount, {
     message: 'contributedAmount must be <= targetAmount',
-  });
+  })
+  .refine(
+    (data) =>
+      (data.status === 'completed' && data.contributedAmount === data.targetAmount) ||
+      (data.status === 'active' && data.contributedAmount < data.targetAmount),
+    { message: 'Goal status must match its contribution progress' }
+  );
 export type SavingsGoal = z.infer<typeof savingsGoalSchema>;
 
 export const allocationSettingsSchema = z.object({

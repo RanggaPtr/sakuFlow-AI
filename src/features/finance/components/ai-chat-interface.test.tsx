@@ -151,5 +151,117 @@ describe('AiChatInterface Draft Flow', () => {
       })
     );
   });
+
+  it('shows simulation result without mutating until the user records the purchase', async () => {
+    vi.mocked(interpretTransactionText).mockResolvedValue({
+      type: 'simulate_purchase',
+      amount: 50000,
+      note: 'Beli kopi',
+    });
+
+    render(<AiChatInterface />);
+    await userEvent.type(screen.getByPlaceholderText('Tulis pengeluaran...'), 'simulasi kopi 50k');
+    await userEvent.click(screen.getByRole('button'));
+
+    await waitFor(() => expect(screen.getByText('Pratinjau tindakan')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Konfirmasi tindakan'));
+
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/Sisa jatah harian/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByText('Catat sebagai pengeluaran'));
+    expect(dispatchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'add-transaction',
+        transaction: expect.objectContaining({ amount: 50000 }),
+      })
+    );
+  });
+
+  it('renders a deterministic summary without reporting a mutation confirmation', async () => {
+    vi.mocked(interpretTransactionText).mockResolvedValue({
+      type: 'ask_summary',
+      question: 'Bagaimana kondisi saya?',
+    });
+
+    render(<AiChatInterface />);
+    await userEvent.type(screen.getByPlaceholderText('Tulis pengeluaran...'), 'ringkas kondisi');
+    await userEvent.click(screen.getByRole('button'));
+    await waitFor(() => expect(screen.getByText('Pratinjau tindakan')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Konfirmasi tindakan'));
+
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/Ringkasan:/i)).toBeInTheDocument();
+    expect(screen.queryByText('Tindakan dikonfirmasi.')).not.toBeInTheDocument();
+  });
+
+  it('reports an actionable error when the requested obligation is unavailable', async () => {
+    vi.mocked(interpretTransactionText).mockResolvedValue({
+      type: 'mark_obligation_paid',
+      obligationName: 'Listrik',
+      amount: 250000,
+    });
+
+    render(<AiChatInterface />);
+    await userEvent.type(
+      screen.getByPlaceholderText('Tulis pengeluaran...'),
+      'tandai listrik lunas 250rb'
+    );
+    await userEvent.click(screen.getByRole('button'));
+    await waitFor(() => expect(screen.getByText('Pratinjau tindakan')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Konfirmasi tindakan'));
+
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/tidak ditemukan atau sudah lunas/i)).toBeInTheDocument();
+  });
+
+  it('does not report success when the requested obligation is already paid', async () => {
+    const snapshot = makeFinanceSnapshot();
+    const payment = {
+      id: '66666666-6666-4666-8666-666666666666',
+      type: 'expense' as const,
+      category: 'housing' as const,
+      amount: 1000000,
+      occurredOn: '2026-08-05',
+      note: 'Bayar Rent',
+      source: 'manual' as const,
+      createdAt: '2026-08-05T00:00:00.000Z',
+    };
+    vi.mocked(useFinance).mockReturnValue({
+      state: {
+        hydration: 'ready',
+        snapshot: {
+          ...snapshot,
+          transactions: [payment],
+          obligations: [
+            { ...snapshot.obligations[0]!, status: 'paid', paidTransactionId: payment.id },
+            snapshot.obligations[1]!,
+          ],
+        },
+        corruptRawValue: null,
+      },
+      dispatch: dispatchMock,
+      persistence: {
+        reset: vi.fn(),
+        exportJson: vi.fn(() => ''),
+        parseImport: vi.fn(),
+        confirmImport: vi.fn(),
+      },
+    });
+    vi.mocked(interpretTransactionText).mockResolvedValue({
+      type: 'mark_obligation_paid',
+      obligationName: 'Rent',
+      amount: 1000000,
+    });
+
+    render(<AiChatInterface />);
+    await userEvent.type(screen.getByPlaceholderText('Tulis pengeluaran...'), 'tandai rent lunas');
+    await userEvent.click(screen.getByRole('button'));
+    await waitFor(() => expect(screen.getByText('Pratinjau tindakan')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Konfirmasi tindakan'));
+
+    expect(dispatchMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/tidak ditemukan atau sudah lunas/i)).toBeInTheDocument();
+    expect(screen.queryByText('Tindakan dikonfirmasi.')).not.toBeInTheDocument();
+  });
 });
 import type { PersistenceEnvelope } from 'src/features/finance/domain';

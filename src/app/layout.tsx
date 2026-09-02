@@ -60,6 +60,10 @@ export const metadata: Metadata = {
   },
   description:
     'SakuFlow AI adalah asisten keuangan pribadi cerdas dan aman yang berjalan secara lokal di perangkat Anda.',
+  robots: {
+    index: false,
+    follow: false,
+  },
   openGraph: {
     type: 'website',
     siteName: CONFIG.appName,

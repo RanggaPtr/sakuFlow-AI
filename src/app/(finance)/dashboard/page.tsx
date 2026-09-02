@@ -2,6 +2,7 @@
 
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
+import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
 import { toLocalYyyyMmDd } from 'src/features/finance/domain';
@@ -28,14 +29,50 @@ export default function DashboardPage() {
         <DashboardOverview
           safeToSpendPerDay={projection.safeToSpendPerDay}
           remainingDays={projection.remainingDays}
+          health={projection.health}
+          reasonCodes={projection.reasonCodes}
+          nextIncomeOn={projection.nextIncomeOn}
+          recurringIncome={projection.recurringIncome}
         />
         <DashboardBudget
           liquidBalance={projection.liquidBalance}
           safePool={projection.safePool}
           spent={projection.spent}
+          unpaidObligationReserve={projection.unpaidObligationReserve}
+          remainingGoalReserve={projection.remainingGoalReserve}
+          bufferReserve={projection.bufferReserve}
         />
-        <PurchaseSimulator />
+        <Button href="#aman-nggak" variant="contained" color="secondary">
+          Aman Nggak? Cek pembelian
+        </Button>
+        <Box id="aman-nggak">
+          <PurchaseSimulator />
+        </Box>
         <AiChatInterface />
+        <Box>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Transaksi terbaru
+          </Typography>
+          {state.snapshot.transactions.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              Belum ada transaksi.
+            </Typography>
+          ) : (
+            [...state.snapshot.transactions]
+              .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+              .slice(0, 5)
+              .map((transaction) => (
+                <Typography key={transaction.id} variant="body2">
+                  {transaction.note} · {transaction.type === 'expense' ? '-' : '+'}
+                  {new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    maximumFractionDigits: 0,
+                  }).format(transaction.amount)}
+                </Typography>
+              ))
+          )}
+        </Box>
       </Stack>
     </Box>
   );

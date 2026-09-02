@@ -7,9 +7,19 @@ interface Props {
   liquidBalance: number;
   safePool: number;
   spent: number;
+  unpaidObligationReserve: number;
+  remainingGoalReserve: number;
+  bufferReserve: number;
 }
 
-export function DashboardBudget({ liquidBalance, safePool, spent }: Props) {
+export function DashboardBudget({
+  liquidBalance,
+  safePool,
+  spent,
+  unpaidObligationReserve,
+  remainingGoalReserve,
+  bufferReserve,
+}: Props) {
   const format = (n: number) =>
     new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -45,15 +55,33 @@ export function DashboardBudget({ liquidBalance, safePool, spent }: Props) {
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
         <Typography variant="body2" color="text.secondary">
-          Saldo Cair Tersedia
+          Saldo cair
         </Typography>
         <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
           {format(liquidBalance)}
         </Typography>
       </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          Cadangan tanggungan
+        </Typography>
+        <Typography variant="body2">{format(unpaidObligationReserve)}</Typography>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="body2" color="text.secondary">
+          Cadangan tujuan
+        </Typography>
+        <Typography variant="body2">{format(remainingGoalReserve)}</Typography>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+        <Typography variant="body2" color="text.secondary">
+          Dana jaga-jaga
+        </Typography>
+        <Typography variant="body2">{format(bufferReserve)}</Typography>
+      </Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
         <Typography variant="body2" color="text.secondary">
-          Dana Aman (Bisa Dipakai)
+          Dana aman
         </Typography>
         <Typography variant="subtitle2" color="primary.main">
           {format(safePool)}

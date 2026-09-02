@@ -36,7 +36,7 @@ export function organizationJsonLd(options: { waLink?: string | null; email?: st
     '@type': 'Organization',
     name: CONFIG.appName,
     url: `${CONFIG.siteUrl}/`,
-    logo: `${CONFIG.siteUrl}${CONFIG.assetsDir}/assets/venturo/logo-venturo-icon.webp`,
+    logo: `${CONFIG.siteUrl}/favicon.ico`,
     ...(options.waLink || options.email
       ? {
           contactPoint: [

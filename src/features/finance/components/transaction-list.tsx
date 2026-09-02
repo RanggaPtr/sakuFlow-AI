@@ -1,13 +1,17 @@
 'use client';
 
+import type { Transaction } from 'src/features/finance/domain';
+
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import List from '@mui/material/List';
 import Button from '@mui/material/Button';
+import Select from '@mui/material/Select';
 import Divider from '@mui/material/Divider';
 import ListItem from '@mui/material/ListItem';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import ListItemText from '@mui/material/ListItemText';
@@ -19,12 +23,21 @@ import { TransactionDialog } from './transaction-dialog';
 export function TransactionList() {
   const { state, dispatch } = useFinance();
   const [openDialog, setOpenDialog] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [query, setQuery] = useState('');
 
-  const transactions = [...state.snapshot.transactions].sort((a, b) => {
-    const diff = b.occurredOn.localeCompare(a.occurredOn);
-    if (diff !== 0) return diff;
-    return b.createdAt.localeCompare(a.createdAt);
-  });
+  const transactions = [...state.snapshot.transactions]
+    .filter((transaction) => typeFilter === 'all' || transaction.type === typeFilter)
+    .filter((transaction) => {
+      const haystack = `${transaction.note} ${transaction.category}`.toLowerCase();
+      return haystack.includes(query.trim().toLowerCase());
+    })
+    .sort((a, b) => {
+      const diff = b.occurredOn.localeCompare(a.occurredOn);
+      if (diff !== 0) return diff;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
 
   const formatRp = (n: number) =>
     new Intl.NumberFormat('id-ID', {
@@ -43,10 +56,41 @@ export function TransactionList() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5">Riwayat Transaksi</Typography>
-        <Button variant="contained" size="small" onClick={() => setOpenDialog(true)}>
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => {
+            setEditingTransaction(null);
+            setOpenDialog(true);
+          }}
+        >
           + Manual
         </Button>
       </Box>
+
+      <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+        <Select
+          size="small"
+          native
+          aria-label="Filter jenis"
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value as typeof typeFilter)}
+        >
+          <option value="all">Semua</option>
+          <option value="income">Masuk</option>
+          <option value="expense">Keluar</option>
+        </Select>
+        <TextField
+          size="small"
+          fullWidth
+          placeholder="Cari transaksi"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </Box>
+      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+        Urutan: tanggal terbaru terlebih dahulu (tanggal dan waktu dibuat sebagai penentu kedua).
+      </Typography>
 
       {transactions.length === 0 ? (
         <Card sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
@@ -61,11 +105,24 @@ export function TransactionList() {
               <Box key={t.id}>
                 <ListItem
                   secondaryAction={
-                    <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(t.id)}>
-                      <Typography variant="body2" color="error.main">
-                        Hapus
-                      </Typography>
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <IconButton
+                        aria-label={`Edit ${t.note}`}
+                        onClick={() => {
+                          setEditingTransaction(t);
+                          setOpenDialog(true);
+                        }}
+                      >
+                        <Typography variant="body2" color="primary.main">
+                          Edit
+                        </Typography>
+                      </IconButton>
+                      <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(t.id)}>
+                        <Typography variant="body2" color="error.main">
+                          Hapus
+                        </Typography>
+                      </IconButton>
+                    </Box>
                   }
                 >
                   <ListItemText
@@ -92,7 +149,14 @@ export function TransactionList() {
         </Card>
       )}
 
-      <TransactionDialog open={openDialog} onClose={() => setOpenDialog(false)} />
+      <TransactionDialog
+        open={openDialog}
+        transaction={editingTransaction}
+        onClose={() => {
+          setOpenDialog(false);
+          setEditingTransaction(null);
+        }}
+      />
     </Box>
   );
 }

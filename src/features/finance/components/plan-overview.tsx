@@ -25,7 +25,9 @@ import {
   buildGoal,
   toLocalYyyyMmDd,
   buildObligation,
+  groupObligations,
   goalCategorySchema,
+  parseStrictIntegerMoney,
   obligationCategorySchema,
   obligationCategoryToTransactionCategory,
 } from 'src/features/finance/domain';
@@ -40,6 +42,10 @@ export function PlanOverview() {
   const [date, setDate] = useState('');
   const [category, setCategory] = useState('other');
   const [error, setError] = useState('');
+  const [bufferError, setBufferError] = useState('');
+  const [bufferAmount, setBufferAmount] = useState(() =>
+    String(state.snapshot.allocation.bufferAmount)
+  );
 
   const formatRp = (n: number) =>
     new Intl.NumberFormat('id-ID', {
@@ -77,12 +83,8 @@ export function PlanOverview() {
       `Masukkan nominal tabungan untuk ${goalName} (Maks ${formatRp(maxAmount)}):`
     );
     if (!input) return;
-    const contributionAmount = Number(input);
-    if (
-      !Number.isSafeInteger(contributionAmount) ||
-      contributionAmount <= 0 ||
-      contributionAmount > maxAmount
-    ) {
+    const contributionAmount = parseStrictIntegerMoney(input);
+    if (contributionAmount === null || contributionAmount <= 0 || contributionAmount > maxAmount) {
       alert('Nominal tidak valid atau melebihi target.');
       return;
     }
@@ -148,6 +150,7 @@ export function PlanOverview() {
   };
 
   const { obligations, goals } = state.snapshot;
+  const groupedObligations = groupObligations(obligations, toLocalYyyyMmDd(new Date()));
 
   return (
     <Box>
@@ -166,39 +169,90 @@ export function PlanOverview() {
           </Box>
         ) : (
           <List disablePadding>
-            {obligations.map((ob, idx) => (
-              <Box key={ob.id}>
-                <ListItem
-                  secondaryAction={
-                    ob.status === 'unpaid' ? (
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => handlePayObligation(ob.id, ob.amount, ob.name, ob.category)}
+            {(
+              [
+                ['Mendatang', groupedObligations.upcoming],
+                ['Terlambat', groupedObligations.overdue],
+                ['Lunas', groupedObligations.paid],
+              ] as const
+            ).map(([label, items]) =>
+              items.length > 0 ? (
+                <Box key={label}>
+                  <Typography variant="subtitle2" sx={{ px: 2, pt: 2 }}>
+                    {label}
+                  </Typography>
+                  {items.map((ob, idx) => (
+                    <Box key={ob.id}>
+                      <ListItem
+                        secondaryAction={
+                          ob.status === 'unpaid' ? (
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() =>
+                                handlePayObligation(ob.id, ob.amount, ob.name, ob.category)
+                              }
+                            >
+                              Bayar
+                            </Button>
+                          ) : (
+                            <Typography
+                              variant="body2"
+                              color="success.main"
+                              sx={{ fontWeight: 'bold' }}
+                            >
+                              Lunas
+                            </Typography>
+                          )
+                        }
                       >
-                        Bayar
-                      </Button>
-                    ) : (
-                      <Typography variant="body2" color="success.main" sx={{ fontWeight: 'bold' }}>
-                        Lunas
-                      </Typography>
-                    )
-                  }
-                >
-                  <ListItemText
-                    primary={ob.name}
-                    secondary={
-                      ob.dueOn
-                        ? `Jatuh tempo: ${ob.dueOn} • ${formatRp(ob.amount)}`
-                        : formatRp(ob.amount)
-                    }
-                  />
-                </ListItem>
-                {idx < obligations.length - 1 && <Divider />}
-              </Box>
-            ))}
+                        <ListItemText
+                          primary={ob.name}
+                          secondary={`Jatuh tempo: ${ob.dueOn} • ${formatRp(ob.amount)}`}
+                        />
+                      </ListItem>
+                      {idx < items.length - 1 && <Divider />}
+                    </Box>
+                  ))}
+                </Box>
+              ) : null
+            )}
           </List>
         )}
+      </Card>
+
+      <Card sx={{ p: 2, mb: 4 }}>
+        <Typography variant="subtitle1">Alokasi dana jaga-jaga</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Cadangan ini dikurangkan dari dana aman setiap hari.
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <TextField
+            size="small"
+            type="number"
+            label="Dana jaga-jaga"
+            value={bufferAmount}
+            onChange={(event) => setBufferAmount(event.target.value)}
+            slotProps={{ htmlInput: { min: 0, step: 1 } }}
+          />
+          <Button
+            variant="outlined"
+            onClick={(event) => {
+              const raw = bufferAmount;
+              const next = raw === '0' || /^[1-9]\d*$/.test(raw) ? Number(raw) : NaN;
+              if (Number.isSafeInteger(next) && next >= 0) {
+                dispatch({ type: 'update-allocation', bufferAmount: next });
+                setBufferAmount(String(next));
+                setBufferError('');
+              } else {
+                setBufferError('Dana jaga-jaga harus berupa Rupiah bulat yang tidak negatif.');
+              }
+            }}
+          >
+            Simpan alokasi
+          </Button>
+        </Box>
+        {bufferError && <Typography color="error">{bufferError}</Typography>}
       </Card>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>

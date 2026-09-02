@@ -36,8 +36,8 @@ const rawEnv = {
 };
 
 const schema = z.object({
-  NEXT_PUBLIC_API_URL: z.url(),
-  NEXT_PUBLIC_COMPANY_SLUG: z.string().min(1),
+  NEXT_PUBLIC_API_URL: z.url().optional(),
+  NEXT_PUBLIC_COMPANY_SLUG: z.string().default(''),
   NEXT_PUBLIC_CLIENT_SLUG: z.string().default(''),
   // Production wajib diisi (canonical/OG/sitemap); dev boleh fallback localhost.
   NEXT_PUBLIC_SITE_URL: isProd ? z.url() : z.url().default('http://localhost:8002'),

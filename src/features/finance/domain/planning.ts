@@ -30,6 +30,14 @@ export const goalDraftSchema = z.object({
 export type ObligationDraftInput = z.input<typeof obligationDraftSchema>;
 export type GoalDraftInput = z.input<typeof goalDraftSchema>;
 
+export function groupObligations(obligations: Obligation[], today: string) {
+  return {
+    upcoming: obligations.filter((item) => item.status === 'unpaid' && item.dueOn >= today),
+    overdue: obligations.filter((item) => item.status === 'unpaid' && item.dueOn < today),
+    paid: obligations.filter((item) => item.status === 'paid'),
+  };
+}
+
 export function buildObligation(
   input: ObligationDraftInput,
   now: Date,

@@ -98,6 +98,13 @@ export function OnboardingWizard() {
               onChange={(event) => setNextPayday(event.target.value)}
               slotProps={{ htmlInput: { min: tomorrowLocal() }, inputLabel: { shrink: true } }}
             />
+            {nextPayday && recurringIncome && (
+              <Typography variant="caption" color="text.secondary">
+                Pemasukan berikutnya: {nextPayday} sebesar Rp
+                {new Intl.NumberFormat('id-ID').format(Number(recurringIncome) || 0)}. Saldo saat
+                ini tetap dihitung terpisah.
+              </Typography>
+            )}
             <TextField
               required
               fullWidth

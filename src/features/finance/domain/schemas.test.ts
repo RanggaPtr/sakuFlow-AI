@@ -3,6 +3,7 @@ import { it, expect, describe } from 'vitest';
 import { makeFinanceSnapshot } from 'src/features/finance/test/fixtures';
 import {
   moneySchema,
+  savingsGoalSchema,
   financeSnapshotSchema,
   persistenceEnvelopeSchema,
 } from 'src/features/finance/domain';
@@ -73,5 +74,15 @@ describe('finance domain schemas', () => {
     };
 
     expect(financeSnapshotSchema.parse(snapshot)).toEqual(snapshot);
+  });
+
+  it('requires completed goals to be fully contributed and active goals to remain incomplete', () => {
+    const goal = makeFinanceSnapshot().goals[0]!;
+    expect(() =>
+      savingsGoalSchema.parse({ ...goal, status: 'completed', contributedAmount: 0 })
+    ).toThrow();
+    expect(() =>
+      savingsGoalSchema.parse({ ...goal, status: 'active', contributedAmount: goal.targetAmount })
+    ).toThrow();
   });
 });

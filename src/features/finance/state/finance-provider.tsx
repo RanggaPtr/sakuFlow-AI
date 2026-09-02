@@ -17,7 +17,7 @@ export interface FinanceContextValue {
   state: FinanceState;
   dispatch: React.Dispatch<FinanceAction>;
   persistence: {
-    reset(): boolean;
+    reset(): Promise<boolean>;
     exportJson(): string;
     parseImport(raw: string): PersistenceEnvelope;
     confirmImport(envelope: PersistenceEnvelope): void;
@@ -79,9 +79,9 @@ export function FinanceProvider({ children }: { children: ReactNode }) {
   };
 
   const persistence: FinanceContextValue['persistence'] = {
-    reset() {
+    async reset() {
       try {
-        getRepository().clear();
+        await getRepository().clear();
       } catch {
         setPersistenceError('Gagal menghapus data tersimpan. Data lama dipertahankan.');
         return false;

@@ -1,8 +1,8 @@
 import type { PersistenceEnvelope } from 'src/features/finance/domain';
 
 import userEvent from '@testing-library/user-event';
-import { render, screen } from '@testing-library/react';
-import { vi, it, expect, describe, beforeEach } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
+import { vi, it, expect, describe, afterEach, beforeEach } from 'vitest';
 
 import { useFinance } from 'src/features/finance/state';
 import { makeFinanceSnapshot } from 'src/features/finance/test/fixtures';
@@ -38,6 +38,8 @@ describe('PlanOverview creation flow', () => {
     });
   });
 
+  afterEach(cleanup);
+
   it('creates an obligation only after confirmation', async () => {
     const user = userEvent.setup();
     render(<PlanOverview />);
@@ -60,5 +62,16 @@ describe('PlanOverview creation flow', () => {
     await user.click(screen.getByRole('button', { name: 'Simpan tujuan' }));
 
     expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'add-goal' }));
+  });
+
+  it('persists a validated safety buffer from the plan screen', async () => {
+    const user = userEvent.setup();
+    render(<PlanOverview />);
+
+    await user.clear(screen.getByRole('spinbutton', { name: 'Dana jaga-jaga' }));
+    await user.type(screen.getByRole('spinbutton', { name: 'Dana jaga-jaga' }), '750000');
+    await user.click(screen.getByRole('button', { name: 'Simpan alokasi' }));
+
+    expect(dispatch).toHaveBeenCalledWith({ type: 'update-allocation', bufferAmount: 750000 });
   });
 });

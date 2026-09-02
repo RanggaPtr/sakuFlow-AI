@@ -15,6 +15,9 @@ export type ProjectionReasonCode =
 export interface FinanceProjection {
   recordedIncome: number;
   recurringIncome: number;
+  projectedRecurringIncome: number;
+  projectedLiquidBalance: number;
+  nextIncomeOn: string | null;
   spent: number;
   liquidBalance: number;
   unpaidObligationReserve: number;
@@ -32,6 +35,9 @@ export function projectBudget(snapshot: FinanceSnapshot, today: string): Finance
     return {
       recordedIncome: 0,
       recurringIncome: 0,
+      projectedRecurringIncome: 0,
+      projectedLiquidBalance: 0,
+      nextIncomeOn: null,
       spent: 0,
       liquidBalance: 0,
       unpaidObligationReserve: 0,
@@ -56,6 +62,12 @@ export function projectBudget(snapshot: FinanceSnapshot, today: string): Finance
 
   const recordedIncome = cycle.openingBalance + incomeTransactions;
   const liquidBalance = recordedIncome - spent;
+  const recurringIncomeRecorded = transactions.some(
+    (transaction) => transaction.type === 'income' && transaction.occurredOn === cycle.nextIncomeOn
+  );
+  const projectedRecurringIncome =
+    today >= cycle.nextIncomeOn && !recurringIncomeRecorded ? cycle.recurringIncome : 0;
+  const projectedLiquidBalance = liquidBalance + projectedRecurringIncome;
 
   const unpaidObligations = obligations.filter((o) => o.status === 'unpaid');
   const unpaidObligationReserve = unpaidObligations.reduce((sum, o) => sum + o.amount, 0);
@@ -100,6 +112,9 @@ export function projectBudget(snapshot: FinanceSnapshot, today: string): Finance
   return {
     recordedIncome,
     recurringIncome: cycle.recurringIncome,
+    projectedRecurringIncome,
+    projectedLiquidBalance,
+    nextIncomeOn: cycle.nextIncomeOn,
     spent,
     liquidBalance,
     unpaidObligationReserve,

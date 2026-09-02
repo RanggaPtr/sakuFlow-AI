@@ -162,4 +162,37 @@ describe('financeReducer', () => {
       })
     ).toBe(state);
   });
+
+  it('updates a transaction while preserving its identity and creation time', () => {
+    const original = {
+      id: '99999999-9999-4999-8999-999999999999',
+      type: 'expense' as const,
+      amount: 200000,
+      category: 'food' as const,
+      createdAt: '2026-08-01T00:00:00Z',
+      note: 'Makan lama',
+      occurredOn: '2026-08-01',
+      source: 'manual' as const,
+    };
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: makeFinanceSnapshot({ transactions: [original] }),
+      corruptRawValue: null,
+    };
+
+    const nextState = financeReducer(state, {
+      type: 'update-transaction',
+      transactionId: original.id,
+      transaction: {
+        ...original,
+        id: '88888888-8888-4888-8888-888888888888',
+        amount: 300000,
+        note: 'Makan baru',
+      },
+    });
+
+    expect(nextState.snapshot.transactions).toEqual([
+      { ...original, amount: 300000, note: 'Makan baru' },
+    ]);
+  });
 });
