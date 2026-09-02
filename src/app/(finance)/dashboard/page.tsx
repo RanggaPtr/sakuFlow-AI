@@ -41,7 +41,7 @@ export default function DashboardPage() {
           today >= projection.nextIncomeOn &&
           (() => {
             const carry = calculateCycleCarryForward(state.snapshot, today);
-            const blocked = carry === null || carry < 0;
+            const blocked = carry === null;
             return (
               <Box>
                 <FormControlLabel
@@ -53,23 +53,28 @@ export default function DashboardPage() {
                   }
                   label="Catat pemasukan rutin"
                 />
-                {blocked && (
+                {carry !== null && carry < 0 && (
                   <Typography color="error" variant="body2">
-                    Saldo carry-forward negatif. Kurangi pengeluaran sebelum memulai siklus baru.
+                    Defisit siklus lama akan dibawa sebagai penyesuaian pada siklus baru.
                   </Typography>
                 )}
                 <Button
                   variant="outlined"
                   disabled={blocked}
                   onClick={() => {
-                    if (!window.confirm('Mulai siklus baru dan catat pemasukan rutin sekarang?'))
-                      return;
+                    const confirmation = recordRecurringIncome
+                      ? 'Mulai siklus baru dan catat pemasukan rutin sekarang?'
+                      : 'Mulai siklus baru tanpa mencatat pemasukan rutin?';
+                    if (!window.confirm(confirmation)) return;
                     const now = new Date();
                     dispatch({
                       type: 'advance-cycle',
                       cycleId: crypto.randomUUID(),
                       today,
                       recordRecurringIncome,
+                      ...(carry !== null && carry < 0
+                        ? { deficitAdjustmentTransactionId: crypto.randomUUID() }
+                        : {}),
                       ...(recordRecurringIncome
                         ? {
                             transaction: {

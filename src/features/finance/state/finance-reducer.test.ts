@@ -2,6 +2,7 @@ import type { FinanceState, FinanceAction } from './finance-reducer';
 
 import { it, expect, describe } from 'vitest';
 
+import { projectBudget } from 'src/features/finance/engine';
 import { createEmptyFinanceSnapshot } from 'src/features/finance/domain';
 import { makeFinanceSnapshot } from 'src/features/finance/test/fixtures';
 
@@ -343,19 +344,24 @@ describe('financeReducer', () => {
     expect(next.snapshot.transactions).toHaveLength(2);
   });
 
-  it('rejects a rollover that would create a negative carried opening', () => {
+  it('carries a negative balance as a system adjustment without recurring income', () => {
     const base = makeFinanceSnapshot();
     const state: FinanceState = {
       hydration: 'ready',
       snapshot: {
         ...base,
-        cycle: { ...base.cycle!, openingBalance: 0, nextIncomeOn: '2026-08-11' },
+        cycle: {
+          ...base.cycle!,
+          openingBalance: 0,
+          recurringIncome: 1000,
+          nextIncomeOn: '2026-08-11',
+        },
         transactions: [
           {
             id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
             type: 'expense',
             category: 'food',
-            amount: 1,
+            amount: 200,
             occurredOn: '2026-08-10',
             note: 'Lebih besar dari saldo',
             source: 'manual',
@@ -365,14 +371,77 @@ describe('financeReducer', () => {
       },
       corruptRawValue: null,
     };
-    expect(
-      financeReducer(state, {
-        type: 'advance-cycle',
-        cycleId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-        today: '2026-08-11',
-        recordRecurringIncome: false,
+    const next = financeReducer(state, {
+      type: 'advance-cycle',
+      cycleId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      today: '2026-08-11',
+      recordRecurringIncome: false,
+      deficitAdjustmentTransactionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+    });
+    expect(next).not.toBe(state);
+    expect(next.snapshot.cycle?.openingBalance).toBe(0);
+    expect(next.snapshot.transactions).toContainEqual(
+      expect.objectContaining({
+        id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        amount: 200,
+        type: 'expense',
+        source: 'system',
+        occurredOn: '2026-08-11',
       })
-    ).toBe(state);
+    );
+    expect(next.snapshot.transactions).toHaveLength(2);
+  });
+
+  it('carries a negative balance and same-day salary into the new liquid balance', () => {
+    const base = makeFinanceSnapshot();
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: {
+        ...base,
+        cycle: {
+          ...base.cycle!,
+          openingBalance: 0,
+          recurringIncome: 1000,
+          nextIncomeOn: '2026-08-11',
+        },
+        transactions: [
+          {
+            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            type: 'expense',
+            category: 'food',
+            amount: 200,
+            occurredOn: '2026-08-10',
+            note: 'Defisit',
+            source: 'manual',
+            createdAt: '2026-08-10T00:00:00.000Z',
+          },
+        ],
+      },
+      corruptRawValue: null,
+    };
+    const next = financeReducer(state, {
+      type: 'advance-cycle',
+      cycleId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      today: '2026-08-11',
+      recordRecurringIncome: true,
+      deficitAdjustmentTransactionId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      transaction: {
+        id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+        type: 'income',
+        category: 'salary',
+        amount: 1000,
+        occurredOn: '2026-08-11',
+        note: 'Rutin',
+        source: 'system',
+        createdAt: '2026-08-11T00:00:00.000Z',
+      },
+    });
+    expect(next.snapshot.cycle?.openingBalance).toBe(0);
+    expect(next.snapshot.transactions).toHaveLength(3);
+    expect(
+      next.snapshot.transactions.filter((item) => item.occurredOn === '2026-08-11')
+    ).toHaveLength(2);
+    expect(projectBudget(next.snapshot, '2026-08-11').liquidBalance).toBe(800);
   });
 
   it('records recurring income on the new cycle while excluding same-day transactions from carry', () => {

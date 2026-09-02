@@ -25,6 +25,10 @@ export interface FinanceState {
   corruptRawValue: string | null;
 }
 
+function uuidSchemaForAction(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export type FinanceAction =
   | { type: 'hydrate'; result: LoadFinanceResult }
   | { type: 'complete-onboarding'; snapshot: FinanceSnapshot }
@@ -40,6 +44,7 @@ export type FinanceAction =
       cycleId: string;
       today: string;
       recordRecurringIncome: boolean;
+      deficitAdjustmentTransactionId?: string;
       transaction?: Transaction;
     }
   | { type: 'update-allocation'; bufferAmount: number }
@@ -223,8 +228,32 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
       if (action.cycleId === cycle.id) return state;
       const currentLiquid = calculateCycleCarryForward(state.snapshot, action.today);
       if (currentLiquid === null) return state;
-      if (currentLiquid < 0) return state;
       let nextTransactions = transactions;
+      if (currentLiquid < 0) {
+        if (
+          !action.deficitAdjustmentTransactionId ||
+          !uuidSchemaForAction(action.deficitAdjustmentTransactionId) ||
+          transactions.some(
+            (transaction) => transaction.id === action.deficitAdjustmentTransactionId
+          )
+        )
+          return state;
+        nextTransactions = [
+          ...nextTransactions,
+          {
+            id: action.deficitAdjustmentTransactionId,
+            type: 'expense',
+            category: 'other',
+            amount: Math.abs(currentLiquid),
+            occurredOn: action.today,
+            note: 'Penyesuaian defisit carry-forward',
+            source: 'system',
+            createdAt: `${action.today}T00:00:00.000Z`,
+          },
+        ];
+      } else if (action.deficitAdjustmentTransactionId) {
+        return state;
+      }
       if (action.recordRecurringIncome) {
         const candidate = transactionSchema.safeParse(action.transaction);
         if (
@@ -237,7 +266,7 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
           transactions.some((transaction) => transaction.id === candidate.data.id)
         )
           return state;
-        nextTransactions = [...transactions, candidate.data];
+        nextTransactions = [...nextTransactions, candidate.data];
       } else if (action.transaction) {
         return state;
       }
@@ -246,7 +275,7 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
         id: action.cycleId,
         startsOn: action.today,
         nextIncomeOn: nextIncomeDateAfter(action.today, profile.incomeDay),
-        openingBalance: currentLiquid,
+        openingBalance: Math.max(currentLiquid, 0),
       };
       const validated = financeSnapshotSchema.safeParse({
         ...state.snapshot,
