@@ -195,6 +195,27 @@ describe('AiChatInterface Draft Flow', () => {
     expect(screen.queryByText('Tindakan dikonfirmasi.')).not.toBeInTheDocument();
   });
 
+  it('shows provenance and confidence for every action preview', async () => {
+    vi.mocked(interpretTransactionText).mockResolvedValue({
+      type: 'add_obligation',
+      name: 'Listrik',
+      amount: 250000,
+      dueOn: '2026-09-05',
+      category: 'utilities',
+      source: 'external',
+      confidence: 'high',
+    });
+    render(<AiChatInterface />);
+    await userEvent.type(
+      screen.getByPlaceholderText('Tulis pengeluaran...'),
+      'tagihan listrik 250rb'
+    );
+    await userEvent.click(screen.getByRole('button'));
+    await waitFor(() => expect(screen.getByText('Pratinjau tindakan')).toBeInTheDocument());
+    expect(screen.getByText(/Sumber: AI eksternal/i)).toBeInTheDocument();
+    expect(screen.getByText(/Keyakinan: tinggi/i)).toBeInTheDocument();
+  });
+
   it('reports an actionable error when the requested obligation is unavailable', async () => {
     vi.mocked(interpretTransactionText).mockResolvedValue({
       type: 'mark_obligation_paid',

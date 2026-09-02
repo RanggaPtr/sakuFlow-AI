@@ -12,6 +12,8 @@ import {
   savingsGoalSchema,
   transactionSchema,
   nextIncomeDateAfter,
+  canModifyTransaction,
+  canDeleteTransaction,
   financeSnapshotSchema,
   createEmptyFinanceSnapshot,
   obligationCategoryToTransactionCategory,
@@ -33,10 +35,36 @@ export type FinanceAction =
   | { type: 'mark-obligation-paid'; obligationId: string; transaction: Transaction }
   | { type: 'add-goal'; goal: SavingsGoal }
   | { type: 'contribute-to-goal'; goalId: string; amount: number; transaction: Transaction }
-  | { type: 'advance-cycle'; cycleId: string; today: string; transaction: Transaction }
+  | {
+      type: 'advance-cycle';
+      cycleId: string;
+      today: string;
+      recordRecurringIncome: boolean;
+      transaction?: Transaction;
+    }
   | { type: 'update-allocation'; bufferAmount: number }
   | { type: 'replace-from-import'; snapshot: FinanceSnapshot }
   | { type: 'reset' };
+
+export function calculateCycleCarryForward(
+  snapshot: FinanceSnapshot,
+  today: string
+): number | null {
+  if (!snapshot.cycle) return null;
+  const cycleTransactions = snapshot.transactions.filter(
+    (transaction) =>
+      transaction.occurredOn >= snapshot.cycle!.startsOn && transaction.occurredOn < today
+  );
+  return (
+    snapshot.cycle.openingBalance +
+    cycleTransactions
+      .filter((transaction) => transaction.type === 'income')
+      .reduce((sum, transaction) => sum + transaction.amount, 0) -
+    cycleTransactions
+      .filter((transaction) => transaction.type === 'expense')
+      .reduce((sum, transaction) => sum + transaction.amount, 0)
+  );
+}
 
 export function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
   switch (action.type) {
@@ -75,9 +103,7 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
     case 'update-transaction': {
       const current = state.snapshot.transactions.find((t) => t.id === action.transactionId);
       if (!current) return state;
-      if (
-        state.snapshot.obligations.some((obligation) => obligation.paidTransactionId === current.id)
-      ) {
+      if (!canModifyTransaction(current, state.snapshot).allowed) {
         return state;
       }
       const candidate = transactionSchema.safeParse({
@@ -105,14 +131,7 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
     case 'delete-transaction': {
       const transaction = state.snapshot.transactions.find((t) => t.id === action.transactionId);
       if (!transaction) return state;
-      const isPaidObligationPayment = state.snapshot.obligations.some(
-        (obligation) => obligation.paidTransactionId === action.transactionId
-      );
-      const hasGoalContribution =
-        transaction.category === 'savings' &&
-        transaction.type === 'expense' &&
-        state.snapshot.goals.some((goal) => goal.contributedAmount > 0);
-      if (isPaidObligationPayment || hasGoalContribution) return state;
+      if (!canDeleteTransaction(transaction, state.snapshot).allowed) return state;
       return {
         ...state,
         snapshot: {
@@ -201,31 +220,27 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
       if (!cycle || !profile || !isYyyyMmDd(action.today) || action.today < cycle.nextIncomeOn) {
         return state;
       }
-      const candidate = transactionSchema.safeParse(action.transaction);
-      if (!candidate.success) return state;
-      if (
-        candidate.data.type !== 'income' ||
-        candidate.data.category !== 'salary' ||
-        candidate.data.amount !== cycle.recurringIncome ||
-        candidate.data.occurredOn !== action.today ||
-        candidate.data.source !== 'system' ||
-        transactions.some((transaction) => transaction.id === candidate.data.id) ||
-        action.cycleId === cycle.id
-      ) {
+      if (action.cycleId === cycle.id) return state;
+      const currentLiquid = calculateCycleCarryForward(state.snapshot, action.today);
+      if (currentLiquid === null) return state;
+      if (currentLiquid < 0) return state;
+      let nextTransactions = transactions;
+      if (action.recordRecurringIncome) {
+        const candidate = transactionSchema.safeParse(action.transaction);
+        if (
+          !candidate.success ||
+          candidate.data.type !== 'income' ||
+          candidate.data.category !== 'salary' ||
+          candidate.data.amount !== cycle.recurringIncome ||
+          candidate.data.occurredOn !== action.today ||
+          candidate.data.source !== 'system' ||
+          transactions.some((transaction) => transaction.id === candidate.data.id)
+        )
+          return state;
+        nextTransactions = [...transactions, candidate.data];
+      } else if (action.transaction) {
         return state;
       }
-      const currentCycleTransactions = transactions.filter(
-        (transaction) =>
-          transaction.occurredOn >= cycle.startsOn && transaction.occurredOn <= action.today
-      );
-      const currentLiquid =
-        cycle.openingBalance +
-        currentCycleTransactions
-          .filter((transaction) => transaction.type === 'income')
-          .reduce((sum, transaction) => sum + transaction.amount, 0) -
-        currentCycleTransactions
-          .filter((transaction) => transaction.type === 'expense')
-          .reduce((sum, transaction) => sum + transaction.amount, 0);
       const nextCycle = {
         ...cycle,
         id: action.cycleId,
@@ -236,7 +251,7 @@ export function financeReducer(state: FinanceState, action: FinanceAction): Fina
       const validated = financeSnapshotSchema.safeParse({
         ...state.snapshot,
         cycle: nextCycle,
-        transactions: [...transactions, candidate.data],
+        transactions: nextTransactions,
       });
       if (!validated.success) return state;
       return { ...state, snapshot: validated.data };

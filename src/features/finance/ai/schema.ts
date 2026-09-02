@@ -58,4 +58,11 @@ export const financeTextRequestSchema = z.object({
   text: z.string().trim().min(1).max(500),
 });
 
+export const financeAiResponseSchema = z.object({
+  intent: financeIntentSchema,
+  source: z.enum(['external', 'local']),
+  confidence: z.enum(['high', 'medium']),
+  degraded: z.boolean().optional(),
+});
+
 export type FinanceIntent = z.infer<typeof financeIntentSchema>;

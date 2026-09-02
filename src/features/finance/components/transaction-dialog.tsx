@@ -18,6 +18,7 @@ import { useFinance } from 'src/features/finance/state';
 import {
   toLocalYyyyMmDd,
   transactionSchema,
+  canModifyTransaction,
   TRANSACTION_CATEGORIES,
   parseStrictIntegerMoney,
   transactionCategorySchema,
@@ -34,7 +35,7 @@ export function isTransactionType(value: string): value is Transaction['type'] {
 }
 
 export function TransactionDialog({ open, onClose, transaction = null }: Props) {
-  const { dispatch } = useFinance();
+  const { dispatch, state } = useFinance();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
@@ -73,6 +74,12 @@ export function TransactionDialog({ open, onClose, transaction = null }: Props) 
     const parsed = transactionSchema.safeParse(tx);
     if (!parsed.success) {
       setError('Nominal, tanggal, kategori, dan catatan harus valid.');
+      return;
+    }
+    if (transaction && !canModifyTransaction(transaction, state.snapshot).allowed) {
+      setError(
+        canModifyTransaction(transaction, state.snapshot).reason ?? 'Transaksi ini dilindungi.'
+      );
       return;
     }
 

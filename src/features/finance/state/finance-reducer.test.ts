@@ -248,6 +248,7 @@ describe('financeReducer', () => {
         source: 'system',
         createdAt: '2026-08-11T00:00:00.000Z',
       },
+      recordRecurringIncome: true,
     };
 
     const next = financeReducer(state, action);
@@ -287,14 +288,132 @@ describe('financeReducer', () => {
         source: 'system',
         createdAt: '2026-08-30T00:00:00.000Z',
       },
+      recordRecurringIncome: true,
     };
     expect(financeReducer(state, early)).toBe(state);
 
     const due = {
       ...early,
       today: '2026-08-31',
-      transaction: { ...early.transaction, occurredOn: '2026-08-31' },
+      transaction: { ...early.transaction!, occurredOn: '2026-08-31' },
+      recordRecurringIncome: true,
     };
     expect(financeReducer(state, due).snapshot.cycle?.nextIncomeOn).toBe('2026-09-30');
+  });
+
+  it('carries only transactions before the new cycle start and can omit recurring income', () => {
+    const base = makeFinanceSnapshot();
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: {
+        ...base,
+        transactions: [
+          {
+            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            type: 'expense',
+            category: 'food',
+            amount: 100000,
+            occurredOn: '2026-08-10',
+            note: 'Kemarin',
+            source: 'manual',
+            createdAt: '2026-08-10T00:00:00.000Z',
+          },
+          {
+            id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            type: 'expense',
+            category: 'food',
+            amount: 200000,
+            occurredOn: '2026-08-11',
+            note: 'Hari ini',
+            source: 'manual',
+            createdAt: '2026-08-11T00:00:00.000Z',
+          },
+        ],
+        cycle: { ...base.cycle!, nextIncomeOn: '2026-08-11' },
+      },
+      corruptRawValue: null,
+    };
+    const next = financeReducer(state, {
+      type: 'advance-cycle',
+      cycleId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      today: '2026-08-11',
+      recordRecurringIncome: false,
+    });
+    expect(next.snapshot.cycle?.openingBalance).toBe(3900000);
+    expect(next.snapshot.transactions).toHaveLength(2);
+  });
+
+  it('rejects a rollover that would create a negative carried opening', () => {
+    const base = makeFinanceSnapshot();
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: {
+        ...base,
+        cycle: { ...base.cycle!, openingBalance: 0, nextIncomeOn: '2026-08-11' },
+        transactions: [
+          {
+            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            type: 'expense',
+            category: 'food',
+            amount: 1,
+            occurredOn: '2026-08-10',
+            note: 'Lebih besar dari saldo',
+            source: 'manual',
+            createdAt: '2026-08-10T00:00:00.000Z',
+          },
+        ],
+      },
+      corruptRawValue: null,
+    };
+    expect(
+      financeReducer(state, {
+        type: 'advance-cycle',
+        cycleId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        today: '2026-08-11',
+        recordRecurringIncome: false,
+      })
+    ).toBe(state);
+  });
+
+  it('records recurring income on the new cycle while excluding same-day transactions from carry', () => {
+    const base = makeFinanceSnapshot();
+    const state: FinanceState = {
+      hydration: 'ready',
+      snapshot: {
+        ...base,
+        cycle: { ...base.cycle!, nextIncomeOn: '2026-08-11' },
+        transactions: [
+          {
+            id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+            type: 'expense',
+            category: 'food',
+            amount: 200000,
+            occurredOn: '2026-08-11',
+            note: 'Hari ini',
+            source: 'manual',
+            createdAt: '2026-08-11T00:00:00.000Z',
+          },
+        ],
+      },
+      corruptRawValue: null,
+    };
+    const next = financeReducer(state, {
+      type: 'advance-cycle',
+      cycleId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      today: '2026-08-11',
+      recordRecurringIncome: true,
+      transaction: {
+        id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        type: 'income',
+        category: 'salary',
+        amount: 6000000,
+        occurredOn: '2026-08-11',
+        note: 'Rutin',
+        source: 'system',
+        createdAt: '2026-08-11T00:00:00.000Z',
+      },
+    });
+    expect(next.snapshot.cycle?.openingBalance).toBe(4000000);
+    expect(next.snapshot.transactions).toHaveLength(2);
   });
 });

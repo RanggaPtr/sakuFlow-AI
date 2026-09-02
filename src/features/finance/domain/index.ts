@@ -5,3 +5,4 @@ export * from './planning';
 export * from './categories';
 export * from './onboarding';
 export * from './empty-snapshot';
+export * from './transaction-policies';

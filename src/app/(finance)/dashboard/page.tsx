@@ -1,21 +1,31 @@
 'use client';
 
+import { useState } from 'react';
+
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
 import Typography from '@mui/material/Typography';
+import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { toLocalYyyyMmDd } from 'src/features/finance/domain';
-import { useFinance, selectProjection, selectRecentTransactions } from 'src/features/finance/state';
 import {
   DashboardBudget,
   AiChatInterface,
   DashboardOverview,
   PurchaseSimulator,
 } from 'src/features/finance/components';
+import {
+  useFinance,
+  selectProjection,
+  selectRecentTransactions,
+  calculateCycleCarryForward,
+} from 'src/features/finance/state';
 
 export default function DashboardPage() {
   const { state, dispatch } = useFinance();
+  const [recordRecurringIncome, setRecordRecurringIncome] = useState(true);
   const today = toLocalYyyyMmDd(new Date());
   const projection = selectProjection(state, today);
 
@@ -27,32 +37,61 @@ export default function DashboardPage() {
         Dasbor
       </Typography>
       <Stack spacing={3}>
-        {projection.nextIncomeOn && today >= projection.nextIncomeOn && (
-          <Button
-            variant="outlined"
-            onClick={() => {
-              if (!window.confirm('Mulai siklus baru dan catat pemasukan rutin sekarang?')) return;
-              const now = new Date();
-              dispatch({
-                type: 'advance-cycle',
-                cycleId: crypto.randomUUID(),
-                today,
-                transaction: {
-                  id: crypto.randomUUID(),
-                  type: 'income',
-                  category: 'salary',
-                  amount: state.snapshot.cycle?.recurringIncome ?? 0,
-                  occurredOn: today,
-                  note: 'Pemasukan rutin',
-                  source: 'system',
-                  createdAt: now.toISOString(),
-                },
-              });
-            }}
-          >
-            Mulai siklus baru / Catat pemasukan rutin
-          </Button>
-        )}
+        {projection.nextIncomeOn &&
+          today >= projection.nextIncomeOn &&
+          (() => {
+            const carry = calculateCycleCarryForward(state.snapshot, today);
+            const blocked = carry === null || carry < 0;
+            return (
+              <Box>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={recordRecurringIncome}
+                      onChange={(event) => setRecordRecurringIncome(event.target.checked)}
+                    />
+                  }
+                  label="Catat pemasukan rutin"
+                />
+                {blocked && (
+                  <Typography color="error" variant="body2">
+                    Saldo carry-forward negatif. Kurangi pengeluaran sebelum memulai siklus baru.
+                  </Typography>
+                )}
+                <Button
+                  variant="outlined"
+                  disabled={blocked}
+                  onClick={() => {
+                    if (!window.confirm('Mulai siklus baru dan catat pemasukan rutin sekarang?'))
+                      return;
+                    const now = new Date();
+                    dispatch({
+                      type: 'advance-cycle',
+                      cycleId: crypto.randomUUID(),
+                      today,
+                      recordRecurringIncome,
+                      ...(recordRecurringIncome
+                        ? {
+                            transaction: {
+                              id: crypto.randomUUID(),
+                              type: 'income' as const,
+                              category: 'salary' as const,
+                              amount: state.snapshot.cycle?.recurringIncome ?? 0,
+                              occurredOn: today,
+                              note: 'Pemasukan rutin',
+                              source: 'system' as const,
+                              createdAt: now.toISOString(),
+                            },
+                          }
+                        : {}),
+                    });
+                  }}
+                >
+                  Mulai siklus baru / Catat pemasukan rutin
+                </Button>
+              </Box>
+            );
+          })()}
         <DashboardOverview
           safeToSpendPerDay={projection.safeToSpendPerDay}
           remainingDays={projection.remainingDays}

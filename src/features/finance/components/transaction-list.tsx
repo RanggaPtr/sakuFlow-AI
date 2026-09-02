@@ -17,7 +17,11 @@ import IconButton from '@mui/material/IconButton';
 import ListItemText from '@mui/material/ListItemText';
 
 import { useFinance } from 'src/features/finance/state';
-import { compareTransactionsByDateDesc } from 'src/features/finance/domain';
+import {
+  canDeleteTransaction,
+  canModifyTransaction,
+  compareTransactionsByDateDesc,
+} from 'src/features/finance/domain';
 
 import { TransactionDialog } from './transaction-dialog';
 
@@ -100,45 +104,70 @@ export function TransactionList() {
           <List disablePadding>
             {transactions.map((t, idx) => (
               <Box key={t.id}>
-                <ListItem
-                  secondaryAction={
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <IconButton
-                        aria-label={`Edit ${t.note}`}
-                        onClick={() => {
-                          setEditingTransaction(t);
-                          setOpenDialog(true);
-                        }}
+                {(() => {
+                  const modifyPolicy = canModifyTransaction(t, state.snapshot);
+                  const deletePolicy = canDeleteTransaction(t, state.snapshot);
+                  return (
+                    <ListItem
+                      secondaryAction={
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          <IconButton
+                            aria-label={`Edit ${t.note}`}
+                            disabled={!modifyPolicy.allowed}
+                            title={modifyPolicy.reason}
+                            onClick={() => {
+                              setEditingTransaction(t);
+                              setOpenDialog(true);
+                            }}
+                          >
+                            <Typography variant="body2" color="primary.main">
+                              Edit
+                            </Typography>
+                          </IconButton>
+                          <IconButton
+                            edge="end"
+                            aria-label="delete"
+                            disabled={!deletePolicy.allowed}
+                            title={deletePolicy.reason}
+                            onClick={() => handleDelete(t.id)}
+                          >
+                            <Typography variant="body2" color="error.main">
+                              Hapus
+                            </Typography>
+                          </IconButton>
+                        </Box>
+                      }
+                    >
+                      <ListItemText
+                        primary={<Typography variant="subtitle2">{t.note}</Typography>}
+                        secondary={
+                          <Box>
+                            <Typography variant="caption" sx={{ display: 'block' }}>
+                              {t.occurredOn} • {t.source}
+                            </Typography>
+                            {modifyPolicy.reason && (
+                              <Typography
+                                variant="caption"
+                                color="warning.main"
+                                sx={{ display: 'block' }}
+                              >
+                                {modifyPolicy.reason}
+                              </Typography>
+                            )}
+                          </Box>
+                        }
+                      />
+                      <Typography
+                        variant="subtitle2"
+                        color={t.type === 'expense' ? 'error.main' : 'success.main'}
+                        sx={{ fontWeight: 'bold', mr: 2 }}
                       >
-                        <Typography variant="body2" color="primary.main">
-                          Edit
-                        </Typography>
-                      </IconButton>
-                      <IconButton edge="end" aria-label="delete" onClick={() => handleDelete(t.id)}>
-                        <Typography variant="body2" color="error.main">
-                          Hapus
-                        </Typography>
-                      </IconButton>
-                    </Box>
-                  }
-                >
-                  <ListItemText
-                    primary={<Typography variant="subtitle2">{t.note}</Typography>}
-                    secondary={
-                      <Typography variant="caption">
-                        {t.occurredOn} • {t.source}
+                        {t.type === 'expense' ? '-' : '+'}
+                        {formatRp(t.amount)}
                       </Typography>
-                    }
-                  />
-                  <Typography
-                    variant="subtitle2"
-                    color={t.type === 'expense' ? 'error.main' : 'success.main'}
-                    sx={{ fontWeight: 'bold', mr: 2 }}
-                  >
-                    {t.type === 'expense' ? '-' : '+'}
-                    {formatRp(t.amount)}
-                  </Typography>
-                </ListItem>
+                    </ListItem>
+                  );
+                })()}
                 {idx < transactions.length - 1 && <Divider />}
               </Box>
             ))}

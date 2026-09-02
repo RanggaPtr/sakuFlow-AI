@@ -88,4 +88,34 @@ describe('TransactionList', () => {
       }),
     });
   });
+
+  it('disables edit and delete for a protected paid-obligation payment', () => {
+    const payment = {
+      ...transactions[1]!,
+      note: 'Bayar listrik',
+      category: 'housing' as const,
+      amount: 350000,
+    };
+    const snapshot = makeFinanceSnapshot({
+      transactions: [payment],
+      obligations: [
+        { ...makeFinanceSnapshot().obligations[1]!, status: 'paid', paidTransactionId: payment.id },
+      ],
+    });
+    vi.mocked(useFinance).mockReturnValue({
+      state: { hydration: 'ready', snapshot, corruptRawValue: null },
+      dispatch,
+      persistence: {
+        reset: vi.fn(),
+        replace: vi.fn(),
+        exportJson: vi.fn(() => ''),
+        parseImport: vi.fn(),
+        confirmImport: vi.fn(),
+      },
+    });
+    render(<TransactionList />);
+    expect(screen.getByRole('button', { name: 'Edit Bayar listrik' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'delete' })).toBeDisabled();
+    expect(screen.getByText(/Pembayaran tanggungan yang sudah lunas/i)).toBeInTheDocument();
+  });
 });

@@ -55,10 +55,10 @@ describe('interpretTransactionText', () => {
       ok: true,
       json: () =>
         Promise.resolve({
-          type: 'expense',
-          amount: 50000,
-          category: 'food',
-          note: 'Makan',
+          intent: { type: 'expense', amount: 50000, category: 'food', note: 'Makan' },
+          source: 'external',
+          confidence: 'high',
+          degraded: false,
         }),
     });
 
@@ -88,10 +88,15 @@ describe('interpretTransactionText', () => {
       ok: true,
       json: () =>
         Promise.resolve({
-          type: 'expense',
-          amount: -50000,
-          category: 'provider-invented-category',
-          note: '',
+          intent: {
+            type: 'expense',
+            amount: -50000,
+            category: 'provider-invented-category',
+            note: '',
+          },
+          source: 'external',
+          confidence: 'high',
+          degraded: false,
         }),
     });
 

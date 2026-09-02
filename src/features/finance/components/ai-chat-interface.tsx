@@ -1,7 +1,7 @@
 'use client';
 
 import type { Transaction } from 'src/features/finance/domain';
-import type { FinanceIntent, InterpretedFinanceIntent } from 'src/features/finance/ai';
+import type { InterpretedFinanceIntent } from 'src/features/finance/ai';
 import type { PurchaseSimulationResult } from 'src/features/finance/engine/simulate-purchase';
 
 import { useState } from 'react';
@@ -38,6 +38,8 @@ interface IntentSimulation {
   note: string;
   today: string;
   result: PurchaseSimulationResult;
+  source?: 'external' | 'fallback';
+  confidence?: 'high' | 'medium';
 }
 
 function simulationMaterial(result: PurchaseSimulationResult) {
@@ -47,6 +49,10 @@ function simulationMaterial(result: PurchaseSimulationResult) {
     result.after.safeToSpendPerDay,
     result.after.liquidBalance,
   ].join(':');
+}
+
+function provenanceLabel(source?: 'external' | 'fallback', confidence?: 'high' | 'medium') {
+  return `Sumber: ${source === 'external' ? 'AI eksternal' : 'Fallback lokal'} · Keyakinan: ${confidence === 'high' ? 'tinggi' : 'sedang'}`;
 }
 
 export function AiChatInterface() {
@@ -65,7 +71,7 @@ export function AiChatInterface() {
     Pick<InterpretedFinanceIntent, 'source' | 'confidence'>
   >({});
   const [draftError, setDraftError] = useState('');
-  const [intentDraft, setIntentDraft] = useState<FinanceIntent | null>(null);
+  const [intentDraft, setIntentDraft] = useState<InterpretedFinanceIntent | null>(null);
   const [intentSimulation, setIntentSimulation] = useState<IntentSimulation | null>(null);
 
   const handleSend = async (e: React.FormEvent) => {
@@ -269,6 +275,8 @@ export function AiChatInterface() {
             today: toLocalYyyyMmDd(now),
             amount: intentDraft.amount,
           }),
+          source: intentDraft.source,
+          confidence: intentDraft.confidence,
         });
         setMessages((prev) => [
           ...prev,
@@ -470,6 +478,9 @@ export function AiChatInterface() {
           <Typography variant="body2" sx={{ my: 1 }}>
             {intentSummary}
           </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {provenanceLabel(intentDraft.source, intentDraft.confidence)}
+          </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
               variant="outlined"
@@ -487,6 +498,9 @@ export function AiChatInterface() {
       ) : intentSimulation ? (
         <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'background.neutral' }}>
           <Typography variant="subtitle2">Hasil simulasi</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {provenanceLabel(intentSimulation.source, intentSimulation.confidence)}
+          </Typography>
           <Typography variant="body2" sx={{ my: 1 }}>
             {intentSimulation.result.verdict === 'safe'
               ? 'Pembelian ini masih aman.'
